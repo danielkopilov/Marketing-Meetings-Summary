@@ -239,79 +239,65 @@
             </StackPanel>
         </Border>
 
-        <!-- Right Content Area with Header -->
-        <Border Grid.Column="1" 
-                Background="White" 
-                CornerRadius="12" 
-                Padding="32,16,32,32"
-                BorderThickness="1"
-                BorderBrush="#E2E8F0">
-            <Border.Effect>
-                <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.08" Color="#000000"/>
-            </Border.Effect>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <!-- Right Content Area - Two Separate Cards -->
+        <StackPanel Grid.Column="1">
+            <!-- Title and Export Button (No white card - on background) -->
+            <Grid Margin="24,8,24,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- Header with Title and Export Button -->
-                <Grid Grid.Row="0" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock x:Name="titleText"
+                               Text="Marketing Kickoff Meeting Summary" 
+                               FontSize="28" 
+                               FontWeight="SemiBold"
+                               FontFamily="Inter"
+                               Foreground="#000000">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="8" 
+                                              Opacity="0.15" 
+                                              Color="#000000"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    <Border Height="3" 
+                            CornerRadius="2" 
+                            Margin="0,4,0,0"
+                            HorizontalAlignment="Left"
+                            Width="500"
+                            Opacity="0.5">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#2563EB" Offset="0"/>
+                                <GradientStop Color="#3B82F6" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                </StackPanel>
 
-                    <StackPanel Grid.Column="0">
-                        <!-- Professional Title with Gradient Accent -->
-                        <StackPanel>
-                            <TextBlock x:Name="titleText"
-                                       Text="Marketing Kickoff Meeting Summary" 
-                                       FontSize="28" 
-                                       FontWeight="SemiBold"
-                                       FontFamily="Inter"
-                                       Foreground="#000000"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Effect>
-                                    <DropShadowEffect ShadowDepth="0" 
-                                                      BlurRadius="8" 
-                                                      Opacity="0.15" 
-                                                      Color="#000000"/>
-                                </TextBlock.Effect>
-                            </TextBlock>
-                            <Border Height="3" 
-                                    CornerRadius="2" 
-                                    Margin="0,4,0,0"
-                                    HorizontalAlignment="Left"
-                                    Width="500"
-                                    Opacity="0.5">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#DC2626" Offset="0"/>
-                                        <GradientStop Color="#EF4444" Offset="1"/>
-                                        </LinearGradientBrush>
-                                </Border.Background>
-                            </Border>
-                        </StackPanel>
-                    </StackPanel>
+                <Button Grid.Column="1" 
+                        Content="📄 Export Summary" 
+                        Style="{StaticResource ModernButton}"
+                        Click="btnGenerateDocument_Click"
+                        VerticalAlignment="Center"/>
+            </Grid>
 
-                    <Button Grid.Column="1" 
-                            Content="📄 Export Summary" 
-                            Style="{StaticResource ModernButton}"
-                            Click="btnGenerateDocument_Click"
-                            Padding="14,3"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
-                            VerticalAlignment="Center"/>
-                </Grid>
-
-                <!-- Content Panel with ScrollViewer -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <!-- Card: Configuration Content with ScrollViewer -->
+            <Border Background="White" 
+                    CornerRadius="12" 
+                    Padding="8,16,32,32"
+                    BorderThickness="0">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.08" Color="#000000"/>
+                </Border.Effect>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="700">
                     <StackPanel x:Name="contentPanel">
                         <!-- Dynamic content loaded here -->
                     </StackPanel>
                 </ScrollViewer>
-            </Grid>
-        </Border>
+            </Border>
+        </StackPanel>
     </Grid>
 </Window>

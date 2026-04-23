@@ -911,59 +911,115 @@ public partial class MainWindow : Window
 
     private void LoadConfigurationSection(System.Windows.Controls.Panel panel)
     {
-        // Create card container with compact styling
+        // Main Configuration Card - matching the image exactly
         var card = new WpfBorder
         {
             Background = System.Windows.Media.Brushes.White,
             CornerRadius = new CornerRadius(12),
-            BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(226, 232, 240)),
-            BorderThickness = new WpfThickness(1),
-            Padding = new WpfThickness(16),
-            Margin = new WpfThickness(0, 0, 0, 12)
+            BorderThickness = new WpfThickness(0),
+            Padding = new WpfThickness(16, 8, 32, 32), // Reduced top padding from 12 to 8
+            Margin = new WpfThickness(0, 0, 0, 0)
+        };
+
+        // Soft shadow
+        card.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            ShadowDepth = 0,
+            BlurRadius = 15,
+            Opacity = 0.08,
+            Color = System.Windows.Media.Color.FromRgb(0, 0, 0)
         };
 
         var stackPanel = new System.Windows.Controls.StackPanel();
         card.Child = stackPanel;
 
-        // Title - compact
+        // Title - Configuration (less bold, closer to top)
         var title = new System.Windows.Controls.TextBlock
         {
             Text = "Configuration",
-            FontSize = 20,
-            FontWeight = System.Windows.FontWeights.SemiBold,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(30, 41, 59)),
-            Margin = new WpfThickness(0, 0, 0, 16)
+            FontSize = 24,
+            FontWeight = System.Windows.FontWeights.SemiBold, // Changed from Bold to SemiBold
+            Foreground = System.Windows.Media.Brushes.Black,
+            Margin = new WpfThickness(0, 0, 0, 8)
         };
         stackPanel.Children.Add(title);
 
-        // ===== RADIATION SOURCE SECTION =====
-        var radiationSourceBorder = new WpfBorder
+        // Subtitle
+        var subtitle = new System.Windows.Controls.TextBlock
         {
+            Text = "Select the relevant options for this meeting.",
+            FontSize = 14,
+            FontWeight = System.Windows.FontWeights.Normal,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(128, 128, 128)),
+            Margin = new WpfThickness(0, 0, 0, 16) // Reduced bottom margin from 32 to 16
+        };
+        stackPanel.Children.Add(subtitle);
+
+        // ===== RADIATION SOURCE SECTION =====
+        var radiationSourceSection = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White, // White background for the whole section
             BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0, 0, 0)), // Changed to black
-            BorderThickness = new WpfThickness(1), // Thinner border
+                System.Windows.Media.Color.FromRgb(229, 231, 235)), // Light border around entire section
+            BorderThickness = new WpfThickness(1),
             CornerRadius = new CornerRadius(8),
-            Padding = new WpfThickness(12),
-            Margin = new WpfThickness(0, 0, 0, 16)
+            Padding = new WpfThickness(0),
+            Margin = new WpfThickness(0, 0, 0, 24), // No left margin - starts at edge
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch, // Stretch to full width
+            MaxWidth = 920 // Limit width but start from left edge
         };
 
         var radiationSourcePanel = new System.Windows.Controls.StackPanel();
-        radiationSourceBorder.Child = radiationSourcePanel;
+        radiationSourceSection.Child = radiationSourcePanel;
+
+        // Title with icon - lighter blue background
+        var radiationTitleContainer = new WpfBorder
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(239, 246, 255)), // Lighter blue background (#EFF6FF)
+            Padding = new WpfThickness(16, 8, 16, 8), // Reduced vertical padding for narrower box
+            CornerRadius = new CornerRadius(8, 8, 0, 0) // Rounded top corners only
+        };
+
+        var radiationTitlePanel = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center // Center everything vertically
+        };
+
+        var radiationIcon = new System.Windows.Controls.TextBlock
+        {
+            Text = "☢️",
+            FontSize = 16,
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+        radiationTitlePanel.Children.Add(radiationIcon);
 
         var radiationSourceTitle = new System.Windows.Controls.TextBlock
         {
             Text = "Radiation Source",
-            FontSize = 14,
+            FontSize = 15,
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(30, 58, 138)),
-            Margin = new WpfThickness(0, 0, 0, 12)
+                System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Margin = new WpfThickness(0, -1, 0, 0) // Move text up slightly (less than before)
         };
-        radiationSourcePanel.Children.Add(radiationSourceTitle);
+        radiationTitlePanel.Children.Add(radiationSourceTitle);
 
-        // Grid for radiation source items - now in 3 columns layout
+        radiationTitleContainer.Child = radiationTitlePanel;
+        radiationSourcePanel.Children.Add(radiationTitleContainer);
+
+        // Options container with white background and padding
+        var optionsContainer = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            Padding = new WpfThickness(16, 16, 16, 16)
+        };
+
+        // Grid for radiation source items - 3 columns layout
         var radiationGrid = new System.Windows.Controls.Grid();
         radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
         radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
@@ -981,7 +1037,7 @@ public partial class MainWindow : Window
 
             var checkBox = _configCheckBoxes[item];
 
-            // Remove from any previous parent (Border or Panel)
+            // Remove from any previous parent
             if (checkBox.Parent is WpfBorder oldBorder)
             {
                 oldBorder.Child = null;
@@ -991,21 +1047,23 @@ public partial class MainWindow : Window
                 oldPanel.Children.Remove(checkBox);
             }
 
-            // Wrap checkbox in a bordered box with reduced width
+            // Slightly more grey surrounding box for each option - less tall
             var itemBorder = new WpfBorder
             {
                 BorderBrush = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0, 0, 0)), // Black border
-                BorderThickness = new WpfThickness(1), // Thinner border
+                    System.Windows.Media.Color.FromRgb(229, 231, 235)), // Slightly more grey (#E5E7EB)
+                BorderThickness = new WpfThickness(1),
                 CornerRadius = new CornerRadius(6),
                 Background = System.Windows.Media.Brushes.White,
-                Padding = new WpfThickness(8, 5, 8, 5),
-                Margin = new WpfThickness(0, 0, 6, 6),
-                MinWidth = 110 // Reduced width
+                Padding = new WpfThickness(12, 4, 12, 4), // Reduced vertical padding from 6 to 4
+                Margin = new WpfThickness(0, 0, 8, 8), // Tight margins - close together
+                MinWidth = 160
             };
 
             checkBox.Margin = new WpfThickness(0);
-            checkBox.FontSize = 11; // Smaller text
+            checkBox.FontSize = 14;
+            checkBox.FontWeight = System.Windows.FontWeights.Normal;
+            checkBox.Foreground = System.Windows.Media.Brushes.Black;
             checkBox.VerticalAlignment = System.Windows.VerticalAlignment.Center;
             checkBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
             itemBorder.Child = checkBox;
@@ -1022,33 +1080,72 @@ public partial class MainWindow : Window
             }
         }
 
-        radiationSourcePanel.Children.Add(radiationGrid);
-        stackPanel.Children.Add(radiationSourceBorder);
+        optionsContainer.Child = radiationGrid;
+        radiationSourcePanel.Children.Add(optionsContainer);
+        stackPanel.Children.Add(radiationSourceSection);
 
         // ===== SYSTEM COMPONENTS SECTION =====
-        var systemComponentsBorder = new WpfBorder
+        var systemComponentsSection = new WpfBorder
         {
+            Background = System.Windows.Media.Brushes.White, // White background for the whole section
             BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0, 0, 0)), // Changed to black
-            BorderThickness = new WpfThickness(1), // Thinner border
+                System.Windows.Media.Color.FromRgb(229, 231, 235)), // Light border around entire section
+            BorderThickness = new WpfThickness(1),
             CornerRadius = new CornerRadius(8),
-            Padding = new WpfThickness(12),
-            Margin = new WpfThickness(0, 0, 0, 16)
+            Padding = new WpfThickness(0),
+            Margin = new WpfThickness(0, 0, 0, 24),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch, // Stretch to full width
+            MaxWidth = 920 // Limit width but start from left edge
         };
 
         var systemComponentsPanel = new System.Windows.Controls.StackPanel();
-        systemComponentsBorder.Child = systemComponentsPanel;
+        systemComponentsSection.Child = systemComponentsPanel;
+
+        // Title with icon - lighter blue background
+        var systemTitleContainer = new WpfBorder
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(239, 246, 255)), // Lighter blue background (#EFF6FF)
+            Padding = new WpfThickness(16, 8, 16, 8), // Reduced vertical padding for narrower box
+            CornerRadius = new CornerRadius(8, 8, 0, 0) // Rounded top corners only
+        };
+
+        var systemTitlePanel = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center // Center everything vertically
+        };
+
+        var systemIcon = new System.Windows.Controls.TextBlock
+        {
+            Text = "📦",
+            FontSize = 16,
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+        systemTitlePanel.Children.Add(systemIcon);
 
         var systemComponentsTitle = new System.Windows.Controls.TextBlock
         {
             Text = "System Components",
-            FontSize = 14,
+            FontSize = 15,
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(30, 58, 138)),
-            Margin = new WpfThickness(0, 0, 0, 12)
+                System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Margin = new WpfThickness(0, -1, 0, 0) // Move text up slightly to align with icon
         };
-        systemComponentsPanel.Children.Add(systemComponentsTitle);
+        systemTitlePanel.Children.Add(systemComponentsTitle);
+
+        systemTitleContainer.Child = systemTitlePanel;
+        systemComponentsPanel.Children.Add(systemTitleContainer);
+
+        // Options container with white background and padding
+        var systemOptionsContainer = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            Padding = new WpfThickness(16, 16, 16, 16)
+        };
 
         // Grid for system components - 3 columns layout
         var componentsGrid = new System.Windows.Controls.Grid();
@@ -1075,21 +1172,23 @@ public partial class MainWindow : Window
                 oldParent.Children.Remove(checkBox);
             }
 
-            // Wrap checkbox in a bordered box with reduced width
+            // Same styling as Radiation Source - compact boxes
             var itemBorder = new WpfBorder
             {
                 BorderBrush = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0, 0, 0)), // Black border
-                BorderThickness = new WpfThickness(1), // Thinner border
+                    System.Windows.Media.Color.FromRgb(229, 231, 235)), // Slightly more grey (#E5E7EB)
+                BorderThickness = new WpfThickness(1),
                 CornerRadius = new CornerRadius(6),
                 Background = System.Windows.Media.Brushes.White,
-                Padding = new WpfThickness(8, 5, 8, 5),
-                Margin = new WpfThickness(0, 0, 6, 6),
-                MinWidth = 150 // Reduced width for system components
+                Padding = new WpfThickness(12, 4, 12, 4), // Same compact padding as Radiation Source
+                Margin = new WpfThickness(0, 0, 8, 8), // Tight margins - close together
+                MinWidth = 160
             };
 
             checkBox.Margin = new WpfThickness(0);
-            checkBox.FontSize = 11; // Smaller text
+            checkBox.FontSize = 14;
+            checkBox.FontWeight = System.Windows.FontWeights.Normal;
+            checkBox.Foreground = System.Windows.Media.Brushes.Black;
             checkBox.VerticalAlignment = System.Windows.VerticalAlignment.Center;
             checkBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
             itemBorder.Child = checkBox;
@@ -1106,150 +1205,387 @@ public partial class MainWindow : Window
             }
         }
 
-        systemComponentsPanel.Children.Add(componentsGrid);
-        stackPanel.Children.Add(systemComponentsBorder);
-
-        // Custom configuration - compact
-        var customLabel = new System.Windows.Controls.TextBlock
-        {
-            Text = "Custom Configuration:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 105)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(customLabel);
-
-        ApplyModernControlStyle(txtCustomConfig);
-        txtCustomConfig.AcceptsReturn = true;
-        txtCustomConfig.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtCustomConfig.MinHeight = 80;
-        SafeAddChild(stackPanel, txtCustomConfig);
+        systemOptionsContainer.Child = componentsGrid;
+        systemComponentsPanel.Children.Add(systemOptionsContainer);
+        stackPanel.Children.Add(systemComponentsSection);
 
         panel.Children.Add(card);
     }
 
     private void LoadTargetsSection(System.Windows.Controls.Panel panel)
     {
-        // Create card container with compact styling
+        // Main Targets Card - matching Configuration design
         var card = new WpfBorder
         {
             Background = System.Windows.Media.Brushes.White,
             CornerRadius = new CornerRadius(12),
-            BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(226, 232, 240)),
-            BorderThickness = new WpfThickness(1),
-            Padding = new WpfThickness(16),
-            Margin = new WpfThickness(0, 0, 0, 12)
+            BorderThickness = new WpfThickness(0),
+            Padding = new WpfThickness(16, 8, 32, 32),
+            Margin = new WpfThickness(0, 0, 0, 0)
+        };
+
+        card.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            ShadowDepth = 0,
+            BlurRadius = 15,
+            Opacity = 0.08,
+            Color = System.Windows.Media.Color.FromRgb(0, 0, 0)
         };
 
         var stackPanel = new System.Windows.Controls.StackPanel();
         card.Child = stackPanel;
 
-        // Title - compact
+        // Title - "Targets List"
         var title = new System.Windows.Controls.TextBlock
         {
-            Text = "Targets",
-            FontSize = 20,
+            Text = "Targets List",
+            FontSize = 24,
             FontWeight = System.Windows.FontWeights.SemiBold,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(30, 41, 59)),
-            Margin = new WpfThickness(0, 0, 0, 12)
+            Foreground = System.Windows.Media.Brushes.Black,
+            Margin = new WpfThickness(0, 0, 0, 8)
         };
         stackPanel.Children.Add(title);
 
-        // Add Target button - compact
+        // Subtitle
+        var subtitle = new System.Windows.Controls.TextBlock
+        {
+            Text = "Add and manage target specifications for this project.",
+            FontSize = 14,
+            FontWeight = System.Windows.FontWeights.Normal,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(128, 128, 128)),
+            Margin = new WpfThickness(0, 0, 0, 16)
+        };
+        stackPanel.Children.Add(subtitle);
+
+        // Targets Section with light blue title background (matching Configuration style)
+        var targetsSection = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(229, 231, 235)),
+            BorderThickness = new WpfThickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new WpfThickness(0),
+            Margin = new WpfThickness(0, 0, 0, 24),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+            MaxWidth = 920
+        };
+
+        var targetsPanel = new System.Windows.Controls.StackPanel();
+        targetsSection.Child = targetsPanel;
+
+        // Title container with light blue background and Add Target button on the right
+        var titleContainer = new WpfBorder
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(239, 246, 255)), // Light blue background
+            Padding = new WpfThickness(16, 3, 16, 3), // Minimal vertical padding - much less than Radiation Source's 8px
+            CornerRadius = new CornerRadius(8, 8, 0, 0)
+        };
+
+        var titleGrid = new System.Windows.Controls.Grid();
+        titleGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        titleGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+
+        var titlePanel = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+
+        var icon = new System.Windows.Controls.TextBlock
+        {
+            Text = "🎯",
+            FontSize = 16, // Same size as Radiation Source icon
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+        titlePanel.Children.Add(icon);
+
+        var sectionTitle = new System.Windows.Controls.TextBlock
+        {
+            Text = "Target Specifications",
+            FontSize = 15, // Same size as Radiation Source text
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Margin = new WpfThickness(0, -1, 0, 0) // Same alignment adjustment as Radiation Source
+        };
+        titlePanel.Children.Add(sectionTitle);
+
+        System.Windows.Controls.Grid.SetColumn(titlePanel, 0);
+        titleGrid.Children.Add(titlePanel);
+
+        // Add Target Button (moved to title bar)
         var addButton = new System.Windows.Controls.Button
         {
             Content = "+ Add Target",
-            Margin = new WpfThickness(0, 0, 0, 12),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-            Padding = new WpfThickness(12, 6, 12, 6),
-            FontSize = 12
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Padding = new WpfThickness(10, 1, 10, 1), // Extremely minimal padding
+            FontSize = 10, // Smaller font
+            FontWeight = System.Windows.FontWeights.Medium,
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(37, 99, 235)),
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new WpfThickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
         };
-        ApplyModernButtonStyle(addButton);
-        addButton.Click += AddTarget_Click;
-        stackPanel.Children.Add(addButton);
 
-        // Targets ItemsControl
-        targetsItemsControl = new System.Windows.Controls.ItemsControl
+        var addButtonTemplate = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+        var addBorderFactory = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        addBorderFactory.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        addBorderFactory.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(6));
+        addBorderFactory.SetValue(WpfBorder.PaddingProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.PaddingProperty));
+
+        var addContentFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+        addContentFactory.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+        addContentFactory.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+
+        addBorderFactory.AppendChild(addContentFactory);
+        addButtonTemplate.VisualTree = addBorderFactory;
+        addButton.Template = addButtonTemplate;
+
+        System.Windows.Controls.Grid.SetColumn(addButton, 1);
+        titleGrid.Children.Add(addButton);
+
+        titleContainer.Child = titleGrid;
+        targetsPanel.Children.Add(titleContainer);
+
+        // Content container with white background
+        var contentContainer = new WpfBorder
         {
-            Margin = new WpfThickness(0, 0, 0, 0)
+            Background = System.Windows.Media.Brushes.White,
+            Padding = new WpfThickness(16, 16, 16, 16)
         };
 
-        // Create DataTemplate for targets
-        var dataTemplate = new System.Windows.DataTemplate();
-        var factory = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
-        factory.SetValue(WpfBorder.BackgroundProperty, new System.Windows.Media.SolidColorBrush(
-            System.Windows.Media.Color.FromRgb(248, 250, 252)));
-        factory.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(8));
-        factory.SetValue(WpfBorder.PaddingProperty, new WpfThickness(12));
-        factory.SetValue(WpfBorder.MarginProperty, new WpfThickness(0, 0, 0, 8));
+        var contentStack = new System.Windows.Controls.StackPanel();
+        contentContainer.Child = contentStack;
 
-        var gridFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Grid));
+        // Column Headers (Target Name, Size, Unit, Actions) - without drag handle column
+        var headersGrid = new System.Windows.Controls.Grid
+        {
+            Margin = new WpfThickness(0, 0, 0, 12)
+        };
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Target Name
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Size
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Unit
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) }); // Actions
 
-        // Create column definitions using AppendChild
-        var col1 = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ColumnDefinition));
-        col1.SetValue(System.Windows.Controls.ColumnDefinition.WidthProperty, new GridLength(1, GridUnitType.Star));
+        var nameHeader = new System.Windows.Controls.TextBlock
+        {
+            Text = "Target Name",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            Margin = new WpfThickness(0, 0, 8, 0)
+        };
+        System.Windows.Controls.Grid.SetColumn(nameHeader, 0);
+        headersGrid.Children.Add(nameHeader);
 
-        var col2 = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ColumnDefinition));
-        col2.SetValue(System.Windows.Controls.ColumnDefinition.WidthProperty, new GridLength(80));
+        var sizeHeader = new System.Windows.Controls.TextBlock
+        {
+            Text = "Size",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            Margin = new WpfThickness(0, 0, 8, 0)
+        };
+        System.Windows.Controls.Grid.SetColumn(sizeHeader, 1);
+        headersGrid.Children.Add(sizeHeader);
 
-        var col3 = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ColumnDefinition));
-        col3.SetValue(System.Windows.Controls.ColumnDefinition.WidthProperty, new GridLength(2, GridUnitType.Star));
+        var unitHeader = new System.Windows.Controls.TextBlock
+        {
+            Text = "Unit",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            Margin = new WpfThickness(0, 0, 8, 0)
+        };
+        System.Windows.Controls.Grid.SetColumn(unitHeader, 2);
+        headersGrid.Children.Add(unitHeader);
 
-        var col4 = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ColumnDefinition));
-        col4.SetValue(System.Windows.Controls.ColumnDefinition.WidthProperty, GridLength.Auto);
+        var actionsHeader = new System.Windows.Controls.TextBlock
+        {
+            Text = "Actions",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128))
+        };
+        System.Windows.Controls.Grid.SetColumn(actionsHeader, 3);
+        headersGrid.Children.Add(actionsHeader);
 
-        // Type TextBox
-        var typeFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-        typeFactory.SetValue(System.Windows.Controls.Grid.ColumnProperty, 0);
-        typeFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty, 
-            new System.Windows.Data.Binding("Type") { Mode = System.Windows.Data.BindingMode.TwoWay });
-        typeFactory.SetValue(System.Windows.Controls.TextBox.MarginProperty, new WpfThickness(0, 0, 8, 0));
-        gridFactory.AppendChild(typeFactory);
+        contentStack.Children.Add(headersGrid);
 
-        // Qty TextBox
-        var qtyFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-        qtyFactory.SetValue(System.Windows.Controls.Grid.ColumnProperty, 1);
-        qtyFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty, 
-            new System.Windows.Data.Binding("Qty") { Mode = System.Windows.Data.BindingMode.TwoWay });
-        qtyFactory.SetValue(System.Windows.Controls.TextBox.MarginProperty, new WpfThickness(0, 0, 8, 0));
-        gridFactory.AppendChild(qtyFactory);
+        // Initialize with 3 empty targets (only if targets list is empty)
+        if (_targets.Count == 0)
+        {
+            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm" });
+            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm" });
+            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm" });
+        }
 
-        // Details TextBox
-        var detailsFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-        detailsFactory.SetValue(System.Windows.Controls.Grid.ColumnProperty, 2);
-        detailsFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty, 
-            new System.Windows.Data.Binding("Details") { Mode = System.Windows.Data.BindingMode.TwoWay });
-        detailsFactory.SetValue(System.Windows.Controls.TextBox.MarginProperty, new WpfThickness(0, 0, 8, 0));
-        gridFactory.AppendChild(detailsFactory);
+        // Create target rows
+        foreach (var target in _targets)
+        {
+            var targetRow = CreateTargetRow(target, contentStack);
+            contentStack.Children.Add(targetRow);
+        }
 
-        // Remove button
-        var removeFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Button));
-        removeFactory.SetValue(System.Windows.Controls.Grid.ColumnProperty, 3);
-        removeFactory.SetValue(System.Windows.Controls.Button.ContentProperty, "×");
-        removeFactory.SetValue(System.Windows.Controls.Button.FontSizeProperty, 18.0);
-        removeFactory.SetValue(System.Windows.Controls.Button.WidthProperty, 32.0);
-        removeFactory.SetValue(System.Windows.Controls.Button.HeightProperty, 32.0);
-        removeFactory.SetValue(System.Windows.Controls.Button.BackgroundProperty, 
-            new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68)));
-        removeFactory.SetValue(System.Windows.Controls.Button.ForegroundProperty, System.Windows.Media.Brushes.White);
-        removeFactory.SetValue(System.Windows.Controls.Button.BorderThicknessProperty, new WpfThickness(0));
-        removeFactory.SetValue(System.Windows.Controls.Button.TagProperty, new System.Windows.Data.Binding("."));
-        removeFactory.AddHandler(System.Windows.Controls.Button.ClickEvent, 
-            new RoutedEventHandler(RemoveTarget_Click));
-        gridFactory.AppendChild(removeFactory);
+        addButton.Click += (s, e) => AddNewTarget(contentStack);
 
-        factory.AppendChild(gridFactory);
-        dataTemplate.VisualTree = factory;
-        targetsItemsControl.ItemTemplate = dataTemplate;
-        targetsItemsControl.ItemsSource = _targets;
-
-        stackPanel.Children.Add(targetsItemsControl);
+        targetsPanel.Children.Add(contentContainer);
+        stackPanel.Children.Add(targetsSection);
 
         panel.Children.Add(card);
+    }
+
+    private WpfBorder CreateTargetRow(TargetItem target, System.Windows.Controls.Panel container)
+    {
+        // Single bordered row matching Configuration section style
+        var rowBorder = new WpfBorder
+        {
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(229, 231, 235)),
+            BorderThickness = new WpfThickness(1),
+            CornerRadius = new CornerRadius(6),
+            Background = System.Windows.Media.Brushes.White,
+            Padding = new WpfThickness(12, 2, 12, 2), // Minimal vertical padding for compact rows
+            Margin = new WpfThickness(0, 0, 0, 8)
+        };
+
+        var grid = new System.Windows.Controls.Grid();
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Target Name
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Size
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Unit
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) }); // Actions
+
+        // Target Name TextBox (borderless, inside the row border)
+        var nameTextBox = new System.Windows.Controls.TextBox
+        {
+            Text = target.Type,
+            FontSize = 13, // Slightly smaller font
+            Padding = new WpfThickness(8, 2, 8, 2), // Very compact padding
+            BorderBrush = System.Windows.Media.Brushes.Transparent,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderThickness = new WpfThickness(0),
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+        };
+
+        nameTextBox.TextChanged += (s, e) => target.Type = nameTextBox.Text;
+
+        System.Windows.Controls.Grid.SetColumn(nameTextBox, 0);
+        grid.Children.Add(nameTextBox);
+
+        // Size TextBox (borderless, inside the row border)
+        var sizeTextBox = new System.Windows.Controls.TextBox
+        {
+            Text = target.Qty,
+            FontSize = 13, // Slightly smaller font
+            Padding = new WpfThickness(8, 2, 8, 2), // Very compact padding
+            BorderBrush = System.Windows.Media.Brushes.Transparent,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderThickness = new WpfThickness(0),
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+        };
+
+        sizeTextBox.TextChanged += (s, e) => target.Qty = sizeTextBox.Text;
+
+        System.Windows.Controls.Grid.SetColumn(sizeTextBox, 1);
+        grid.Children.Add(sizeTextBox);
+
+        // Unit ComboBox (borderless, inside the row border)
+        var unitComboBox = new System.Windows.Controls.ComboBox
+        {
+            FontSize = 13, // Slightly smaller font
+            Padding = new WpfThickness(8, 2, 8, 2), // Very compact padding
+            BorderBrush = System.Windows.Media.Brushes.Transparent,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderThickness = new WpfThickness(0),
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+        };
+        unitComboBox.Items.Add("mm");
+        unitComboBox.Items.Add("mRad");
+        unitComboBox.Items.Add("cy/mRad");
+        unitComboBox.SelectedItem = target.Details ?? "mm";
+        unitComboBox.SelectionChanged += (s, e) => target.Details = unitComboBox.SelectedItem?.ToString() ?? "mm";
+
+        System.Windows.Controls.Grid.SetColumn(unitComboBox, 2);
+        grid.Children.Add(unitComboBox);
+
+        // Delete Button (trash icon, gray color)
+        var deleteButton = new System.Windows.Controls.Button
+        {
+            Content = "🗑️",
+            FontSize = 16,
+            Width = 32,
+            Height = 32,
+            Background = System.Windows.Media.Brushes.Transparent,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)), // Gray color
+            BorderThickness = new WpfThickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+        };
+
+        var delButtonTemplate = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+        var delBorderFactory = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        delBorderFactory.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        delBorderFactory.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(4));
+
+        var delContentFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+        delContentFactory.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+        delContentFactory.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+
+        delBorderFactory.AppendChild(delContentFactory);
+        delButtonTemplate.VisualTree = delBorderFactory;
+        deleteButton.Template = delButtonTemplate;
+
+        deleteButton.MouseEnter += (s, e) =>
+        {
+            deleteButton.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(239, 68, 68)); // Red on hover
+        };
+
+        deleteButton.MouseLeave += (s, e) =>
+        {
+            deleteButton.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)); // Gray default
+        };
+
+        deleteButton.Click += (s, e) => RemoveTargetRow(target, rowBorder, container);
+
+        System.Windows.Controls.Grid.SetColumn(deleteButton, 3);
+        grid.Children.Add(deleteButton);
+
+        rowBorder.Child = grid;
+        return rowBorder;
+    }
+
+    private void AddNewTarget(System.Windows.Controls.Panel container)
+    {
+        var newTarget = new TargetItem { Type = "", Qty = "", Details = "mm" };
+        _targets.Add(newTarget);
+
+        var targetRow = CreateTargetRow(newTarget, container);
+
+        container.Children.Add(targetRow);
+    }
+
+    private void RemoveTargetRow(TargetItem target, WpfBorder rowBorder, System.Windows.Controls.Panel container)
+    {
+        _targets.Remove(target);
+        container.Children.Remove(rowBorder);
     }
 
     private void LoadActionsSection(System.Windows.Controls.Panel panel)
@@ -1547,18 +1883,8 @@ public partial class MainWindow : Window
 
     private void InitializeTargets()
     {
-        var defaultTargets = new[]
-        {
-            "4Bar", "Pin Hole", "Square", "Cross", "Step", "USAF", "Boresight", "LOS Alignment"
-        };
-
-        foreach (var type in defaultTargets)
-        {
-            var target = new TargetItem { Type = type };
-            _targets.Add(target);
-        }
-
-        // ItemsSource will be set when LoadTargetsSection is called
+        // Targets will be initialized with 3 empty items in LoadTargetsSection
+        // Keep collection empty here
     }
 
     private void InitializeQuestions()
