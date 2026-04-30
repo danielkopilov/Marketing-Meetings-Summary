@@ -44,11 +44,18 @@ public class TargetItem : INotifyPropertyChanged
 public class QuestionItem : INotifyPropertyChanged
 {
     private string _text = "";
+    private int _number;
 
     public string Text
     {
         get => _text;
         set { _text = value; OnPropertyChanged(nameof(Text)); }
+    }
+
+    public int Number
+    {
+        get => _number;
+        set { _number = value; OnPropertyChanged(nameof(Number)); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -88,6 +95,9 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
     private readonly ObservableCollection<TargetItem> _targets = new();
     private readonly ObservableCollection<QuestionItem> _questions = new();
+    private readonly ObservableCollection<QuestionItem> _marketingQuestions = new();
+    private readonly ObservableCollection<QuestionItem> _marketingNotes = new();
+    private readonly ObservableCollection<QuestionItem> _pmNotes = new();
 
     // Form controls
     private System.Windows.Controls.TextBox txtOrderNumber = new();
@@ -118,13 +128,10 @@ public partial class MainWindow : Window
     private System.Windows.Controls.TextBox txtCustomConfig = new();
     private System.Windows.Controls.ItemsControl targetsItemsControl = new();
     private System.Windows.Controls.ItemsControl questionsItemsControl = new();
+    private System.Windows.Controls.ItemsControl marketingQuestionsItemsControl = new();
     private System.Windows.Controls.TextBox txtActions = new();
-    private System.Windows.Controls.TextBox txtMeetingSummary = new();
-    private System.Windows.Controls.TextBox txtDecisions = new();
-    private System.Windows.Controls.TextBox txtRisks = new();
-    private System.Windows.Controls.TextBox txtLogistics = new();
-    private System.Windows.Controls.TextBox txtSoftware = new();
-    private System.Windows.Controls.TextBox txtTraining = new();
+    private System.Windows.Controls.ItemsControl marketingNotesItemsControl = new();
+    private System.Windows.Controls.ItemsControl pmNotesItemsControl = new();
 
     public MainWindow()
     {
@@ -134,6 +141,8 @@ public partial class MainWindow : Window
             InitializeConfigItems();
             InitializeTargets();
             InitializeQuestions();
+            InitializeMarketingQuestions();
+            InitializeNotes();
 
             // Load Overview section after window is loaded
             this.Loaded += MainWindow_Loaded;
@@ -1358,21 +1367,35 @@ public partial class MainWindow : Window
         var contentContainer = new WpfBorder
         {
             Background = System.Windows.Media.Brushes.White,
-            Padding = new WpfThickness(16, 16, 16, 16)
+            Padding = new WpfThickness(16, 2, 16, 16)
         };
 
         var contentStack = new System.Windows.Controls.StackPanel();
         contentContainer.Child = contentStack;
 
-        // Column Headers (Target Name, Size, Unit, Actions) - without drag handle column
+        // Column Headers (#, Target Name, Size, Unit, Actions)
         var headersGrid = new System.Windows.Controls.Grid
         {
-            Margin = new WpfThickness(0, 0, 0, 12)
+            Margin = new WpfThickness(0, 0, 0, 2)
         };
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(28) });  // #
         headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Target Name
         headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Size
         headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Unit
-        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) }); // Actions
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) });  // Actions
+
+        var numHeader = new System.Windows.Controls.TextBlock
+        {
+            Text = "#",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
+        };
+        System.Windows.Controls.Grid.SetColumn(numHeader, 0);
+        headersGrid.Children.Add(numHeader);
 
         var nameHeader = new System.Windows.Controls.TextBlock
         {
@@ -1381,9 +1404,11 @@ public partial class MainWindow : Window
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(107, 114, 128)),
-            Margin = new WpfThickness(0, 0, 8, 0)
+            Margin = new WpfThickness(4, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(nameHeader, 0);
+        System.Windows.Controls.Grid.SetColumn(nameHeader, 1);
         headersGrid.Children.Add(nameHeader);
 
         var sizeHeader = new System.Windows.Controls.TextBlock
@@ -1393,9 +1418,11 @@ public partial class MainWindow : Window
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(107, 114, 128)),
-            Margin = new WpfThickness(0, 0, 8, 0)
+            Margin = new WpfThickness(8, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(sizeHeader, 1);
+        System.Windows.Controls.Grid.SetColumn(sizeHeader, 2);
         headersGrid.Children.Add(sizeHeader);
 
         var unitHeader = new System.Windows.Controls.TextBlock
@@ -1405,9 +1432,11 @@ public partial class MainWindow : Window
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(107, 114, 128)),
-            Margin = new WpfThickness(0, 0, 8, 0)
+            Margin = new WpfThickness(8, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(unitHeader, 2);
+        System.Windows.Controls.Grid.SetColumn(unitHeader, 3);
         headersGrid.Children.Add(unitHeader);
 
         var actionsHeader = new System.Windows.Controls.TextBlock
@@ -1416,9 +1445,12 @@ public partial class MainWindow : Window
             FontSize = 12,
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(107, 114, 128))
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            Margin = new WpfThickness(8, 0, 0, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(actionsHeader, 3);
+        System.Windows.Controls.Grid.SetColumn(actionsHeader, 4);
         headersGrid.Children.Add(actionsHeader);
 
         contentStack.Children.Add(headersGrid);
@@ -1432,9 +1464,9 @@ public partial class MainWindow : Window
         }
 
         // Create target rows
-        foreach (var target in _targets)
+        for (int i = 0; i < _targets.Count; i++)
         {
-            var targetRow = CreateTargetRow(target, contentStack);
+            var targetRow = CreateTargetRow(_targets[i], contentStack, i + 1);
             contentStack.Children.Add(targetRow);
         }
 
@@ -1446,81 +1478,112 @@ public partial class MainWindow : Window
         panel.Children.Add(card);
     }
 
-    private WpfBorder CreateTargetRow(TargetItem target, System.Windows.Controls.Panel container)
+    private WpfBorder CreateTargetRow(TargetItem target, System.Windows.Controls.Panel container, int rowNumber)
     {
         // Single bordered row matching Configuration section style
         var rowBorder = new WpfBorder
         {
-            BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(229, 231, 235)),
-            BorderThickness = new WpfThickness(1),
-            CornerRadius = new CornerRadius(6),
-            Background = System.Windows.Media.Brushes.White,
-            Padding = new WpfThickness(12, 2, 12, 2), // Minimal vertical padding for compact rows
-            Margin = new WpfThickness(0, 0, 0, 8)
+            BorderThickness = new WpfThickness(0),
+            Background = System.Windows.Media.Brushes.Transparent,
+            Padding = new WpfThickness(0, 0, 0, 0),
+            Margin = new WpfThickness(0, 0, 0, 1)
         };
 
         var grid = new System.Windows.Controls.Grid();
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(28) });  // #
         grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Target Name
         grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Size
         grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Unit
-        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) }); // Actions
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) });  // Actions
 
-        // Target Name TextBox (borderless, inside the row border)
+        // Row number label
+        var numberLabel = new System.Windows.Controls.TextBlock
+        {
+            Text = rowNumber.ToString(),
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            Tag = "RowNumber"
+        };
+        System.Windows.Controls.Grid.SetColumn(numberLabel, 0);
+        grid.Children.Add(numberLabel);
+
+        // Target Name TextBox (bordered)
         var nameTextBox = new System.Windows.Controls.TextBox
         {
             Text = target.Type,
-            FontSize = 13, // Slightly smaller font
-            Padding = new WpfThickness(8, 2, 8, 2), // Very compact padding
-            BorderBrush = System.Windows.Media.Brushes.Transparent,
-            Background = System.Windows.Media.Brushes.Transparent,
-            BorderThickness = new WpfThickness(0),
+            FontSize = 13,
+            Height = 32,
+            Padding = new WpfThickness(8, 0, 8, 0),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(209, 213, 219)),
+            Background = System.Windows.Media.Brushes.White,
+            BorderThickness = new WpfThickness(1),
             Margin = new WpfThickness(0, 0, 8, 0),
             VerticalContentAlignment = System.Windows.VerticalAlignment.Center
         };
+        ApplyRoundedTextBoxTemplate(nameTextBox);
 
         nameTextBox.TextChanged += (s, e) => target.Type = nameTextBox.Text;
 
-        System.Windows.Controls.Grid.SetColumn(nameTextBox, 0);
+        System.Windows.Controls.Grid.SetColumn(nameTextBox, 1);
         grid.Children.Add(nameTextBox);
 
-        // Size TextBox (borderless, inside the row border)
+        // Size TextBox (bordered)
         var sizeTextBox = new System.Windows.Controls.TextBox
         {
             Text = target.Qty,
-            FontSize = 13, // Slightly smaller font
-            Padding = new WpfThickness(8, 2, 8, 2), // Very compact padding
-            BorderBrush = System.Windows.Media.Brushes.Transparent,
-            Background = System.Windows.Media.Brushes.Transparent,
-            BorderThickness = new WpfThickness(0),
+            FontSize = 13,
+            Height = 32,
+            Padding = new WpfThickness(8, 0, 8, 0),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(209, 213, 219)),
+            Background = System.Windows.Media.Brushes.White,
+            BorderThickness = new WpfThickness(1),
             Margin = new WpfThickness(0, 0, 8, 0),
             VerticalContentAlignment = System.Windows.VerticalAlignment.Center
         };
+        ApplyRoundedTextBoxTemplate(sizeTextBox);
 
         sizeTextBox.TextChanged += (s, e) => target.Qty = sizeTextBox.Text;
 
-        System.Windows.Controls.Grid.SetColumn(sizeTextBox, 1);
+        System.Windows.Controls.Grid.SetColumn(sizeTextBox, 2);
         grid.Children.Add(sizeTextBox);
 
         // Unit ComboBox (borderless, inside the row border)
+        // Wrap ComboBox in a rounded Border for the visual style
+        var comboWrapper = new WpfBorder
+        {
+            CornerRadius = new CornerRadius(6),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(209, 213, 219)),
+            BorderThickness = new WpfThickness(1),
+            Background = System.Windows.Media.Brushes.White,
+            Margin = new WpfThickness(0, 0, 8, 0),
+            Height = 32
+        };
+
         var unitComboBox = new System.Windows.Controls.ComboBox
         {
-            FontSize = 13, // Slightly smaller font
-            Padding = new WpfThickness(8, 2, 8, 2), // Very compact padding
-            BorderBrush = System.Windows.Media.Brushes.Transparent,
-            Background = System.Windows.Media.Brushes.Transparent,
+            FontSize = 13,
             BorderThickness = new WpfThickness(0),
-            Margin = new WpfThickness(0, 0, 8, 0),
-            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+            Background = System.Windows.Media.Brushes.Transparent,
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalContentAlignment = System.Windows.HorizontalAlignment.Center,
+            Padding = new WpfThickness(6, 0, 2, 0)
         };
+        comboWrapper.Child = unitComboBox;
         unitComboBox.Items.Add("mm");
         unitComboBox.Items.Add("mRad");
         unitComboBox.Items.Add("cy/mRad");
         unitComboBox.SelectedItem = target.Details ?? "mm";
         unitComboBox.SelectionChanged += (s, e) => target.Details = unitComboBox.SelectedItem?.ToString() ?? "mm";
 
-        System.Windows.Controls.Grid.SetColumn(unitComboBox, 2);
-        grid.Children.Add(unitComboBox);
+        System.Windows.Controls.Grid.SetColumn(comboWrapper, 3);
+        grid.Children.Add(comboWrapper);
 
         // Delete Button (trash icon, gray color)
         var deleteButton = new System.Windows.Controls.Button
@@ -1565,7 +1628,7 @@ public partial class MainWindow : Window
 
         deleteButton.Click += (s, e) => RemoveTargetRow(target, rowBorder, container);
 
-        System.Windows.Controls.Grid.SetColumn(deleteButton, 3);
+        System.Windows.Controls.Grid.SetColumn(deleteButton, 4);
         grid.Children.Add(deleteButton);
 
         rowBorder.Child = grid;
@@ -1577,8 +1640,7 @@ public partial class MainWindow : Window
         var newTarget = new TargetItem { Type = "", Qty = "", Details = "mm" };
         _targets.Add(newTarget);
 
-        var targetRow = CreateTargetRow(newTarget, container);
-
+        var targetRow = CreateTargetRow(newTarget, container, _targets.Count);
         container.Children.Add(targetRow);
     }
 
@@ -1586,6 +1648,41 @@ public partial class MainWindow : Window
     {
         _targets.Remove(target);
         container.Children.Remove(rowBorder);
+
+        // Renumber remaining rows (skip header rows — only WpfBorder children are data rows)
+        int num = 1;
+        foreach (var child in container.Children)
+        {
+            if (child is WpfBorder rb && rb.Child is System.Windows.Controls.Grid g)
+            {
+                foreach (var gc in g.Children)
+                {
+                    if (gc is System.Windows.Controls.TextBlock tb && tb.Tag is string tag && tag == "RowNumber")
+                    {
+                        tb.Text = num.ToString();
+                        break;
+                    }
+                }
+                num++;
+            }
+        }
+    }
+
+    private void ApplyRoundedTextBoxTemplate(System.Windows.Controls.TextBox textBox)
+    {
+        var template = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.TextBox));
+        var borderFact = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        borderFact.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        borderFact.SetValue(WpfBorder.BorderBrushProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderBrushProperty));
+        borderFact.SetValue(WpfBorder.BorderThicknessProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderThicknessProperty));
+        borderFact.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(6));
+        borderFact.SetValue(WpfBorder.PaddingProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.PaddingProperty));
+        var scrollFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ScrollViewer));
+        scrollFact.Name = "PART_ContentHost";
+        scrollFact.SetValue(System.Windows.Controls.ScrollViewer.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        borderFact.AppendChild(scrollFact);
+        template.VisualTree = borderFact;
+        textBox.Template = template;
     }
 
     private void LoadActionsSection(System.Windows.Controls.Panel panel)
@@ -1635,10 +1732,10 @@ public partial class MainWindow : Window
             Content = "+ Add Question",
             Margin = new WpfThickness(0, 0, 0, 8),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-            Padding = new WpfThickness(12, 6, 12, 6),
             FontSize = 12
         };
         ApplyModernButtonStyle(addButton);
+        addButton.Padding = new WpfThickness(10, 2, 10, 2);
         addButton.Click += AddQuestion_Click;
         stackPanel.Children.Add(addButton);
 
@@ -1648,18 +1745,49 @@ public partial class MainWindow : Window
             Margin = new WpfThickness(0, 0, 0, 16)
         };
 
-        // Create DataTemplate for questions with compact styling
+        // Numbered row: "1. [TextBox] [🗑]"
         var dataTemplate = new System.Windows.DataTemplate();
-        var factory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-        factory.SetBinding(System.Windows.Controls.TextBox.TextProperty, 
+        var rowFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.DockPanel));
+        rowFactory.SetValue(System.Windows.Controls.DockPanel.MarginProperty, new WpfThickness(0, 0, 0, 6));
+
+        var numFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+        numFactory.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
+            new System.Windows.Data.Binding("Number") { StringFormat = "{0}." });
+        numFactory.SetValue(System.Windows.Controls.TextBlock.FontSizeProperty, 13.0);
+        numFactory.SetValue(System.Windows.Controls.TextBlock.FontWeightProperty, System.Windows.FontWeights.SemiBold);
+        numFactory.SetValue(System.Windows.Controls.TextBlock.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        numFactory.SetValue(System.Windows.Controls.TextBlock.MarginProperty, new WpfThickness(0, 0, 4, 0));
+        numFactory.SetValue(System.Windows.Controls.TextBlock.WidthProperty, 20.0);
+        numFactory.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Left);
+        rowFactory.AppendChild(numFactory);
+
+        var delFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Button));
+        delFactory.SetValue(System.Windows.Controls.Button.ContentProperty, "🗑");
+        delFactory.SetValue(System.Windows.Controls.Button.FontSizeProperty, 13.0);
+        delFactory.SetValue(System.Windows.Controls.Button.ForegroundProperty, System.Windows.Media.Brushes.Black);
+        delFactory.SetValue(System.Windows.Controls.Button.BackgroundProperty, System.Windows.Media.Brushes.Transparent);
+        delFactory.SetValue(System.Windows.Controls.Button.BorderThicknessProperty, new WpfThickness(0));
+        delFactory.SetValue(System.Windows.Controls.Button.CursorProperty, System.Windows.Input.Cursors.Hand);
+        delFactory.SetValue(System.Windows.Controls.Button.PaddingProperty, new WpfThickness(4, 0, 0, 0));
+        delFactory.SetValue(System.Windows.Controls.Button.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        delFactory.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Right);
+        delFactory.SetBinding(System.Windows.Controls.Button.TagProperty, new System.Windows.Data.Binding());
+        delFactory.AddHandler(System.Windows.Controls.Button.ClickEvent, new RoutedEventHandler(DeletePmQuestion_Click));
+        rowFactory.AppendChild(delFactory);
+
+        var tbFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+        tbFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty,
             new System.Windows.Data.Binding("Text") { Mode = System.Windows.Data.BindingMode.TwoWay });
-        factory.SetValue(System.Windows.Controls.TextBox.MarginProperty, new WpfThickness(0, 0, 0, 6));
-        factory.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 6, 8, 6));
-        factory.SetValue(System.Windows.Controls.TextBox.FontSizeProperty, 13.0);
-        factory.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
+        tbFactory.SetValue(System.Windows.Controls.TextBox.HeightProperty, 28.0);
+        tbFactory.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 2, 8, 2));
+        tbFactory.SetValue(System.Windows.Controls.TextBox.VerticalContentAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        tbFactory.SetValue(System.Windows.Controls.TextBox.FontSizeProperty, 13.0);
+        tbFactory.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
             new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)));
-        factory.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
-        dataTemplate.VisualTree = factory;
+        tbFactory.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
+        rowFactory.AppendChild(tbFactory);
+
+        dataTemplate.VisualTree = rowFactory;
         questionsItemsControl.ItemTemplate = dataTemplate;
         questionsItemsControl.ItemsSource = _questions;
 
@@ -1677,19 +1805,78 @@ public partial class MainWindow : Window
         };
         stackPanel.Children.Add(marketingQuestionsLabel);
 
-        // Actions section (reused for marketing questions) - compact
-        ApplyModernControlStyle(txtActions);
-        txtActions.AcceptsReturn = true;
-        txtActions.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtActions.MinHeight = 80;
-        SafeAddChild(stackPanel, txtActions);
+        // Add Marketing Question button - compact
+        var addMarketingButton = new System.Windows.Controls.Button
+        {
+            Content = "+ Add Question",
+            Margin = new WpfThickness(0, 0, 0, 8),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            FontSize = 12
+        };
+        ApplyModernButtonStyle(addMarketingButton);
+        addMarketingButton.Padding = new WpfThickness(10, 2, 10, 2);
+        addMarketingButton.Click += AddMarketingQuestion_Click;
+        stackPanel.Children.Add(addMarketingButton);
+
+        // Marketing Questions ItemsControl
+        marketingQuestionsItemsControl = new System.Windows.Controls.ItemsControl
+        {
+            Margin = new WpfThickness(0, 0, 0, 16)
+        };
+
+        // Numbered row: "1. [TextBox] [🗑]"
+        var marketingDataTemplate = new System.Windows.DataTemplate();
+        var mRowFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.DockPanel));
+        mRowFactory.SetValue(System.Windows.Controls.DockPanel.MarginProperty, new WpfThickness(0, 0, 0, 6));
+
+        var mNumFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+        mNumFactory.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
+            new System.Windows.Data.Binding("Number") { StringFormat = "{0}." });
+        mNumFactory.SetValue(System.Windows.Controls.TextBlock.FontSizeProperty, 13.0);
+        mNumFactory.SetValue(System.Windows.Controls.TextBlock.FontWeightProperty, System.Windows.FontWeights.SemiBold);
+        mNumFactory.SetValue(System.Windows.Controls.TextBlock.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        mNumFactory.SetValue(System.Windows.Controls.TextBlock.MarginProperty, new WpfThickness(0, 0, 4, 0));
+        mNumFactory.SetValue(System.Windows.Controls.TextBlock.WidthProperty, 20.0);
+        mNumFactory.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Left);
+        mRowFactory.AppendChild(mNumFactory);
+
+        var mDelFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Button));
+        mDelFactory.SetValue(System.Windows.Controls.Button.ContentProperty, "🗑");
+        mDelFactory.SetValue(System.Windows.Controls.Button.FontSizeProperty, 13.0);
+        mDelFactory.SetValue(System.Windows.Controls.Button.ForegroundProperty, System.Windows.Media.Brushes.Black);
+        mDelFactory.SetValue(System.Windows.Controls.Button.BackgroundProperty, System.Windows.Media.Brushes.Transparent);
+        mDelFactory.SetValue(System.Windows.Controls.Button.BorderThicknessProperty, new WpfThickness(0));
+        mDelFactory.SetValue(System.Windows.Controls.Button.CursorProperty, System.Windows.Input.Cursors.Hand);
+        mDelFactory.SetValue(System.Windows.Controls.Button.PaddingProperty, new WpfThickness(4, 0, 0, 0));
+        mDelFactory.SetValue(System.Windows.Controls.Button.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        mDelFactory.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Right);
+        mDelFactory.SetBinding(System.Windows.Controls.Button.TagProperty, new System.Windows.Data.Binding());
+        mDelFactory.AddHandler(System.Windows.Controls.Button.ClickEvent, new RoutedEventHandler(DeleteMarketingQuestion_Click));
+        mRowFactory.AppendChild(mDelFactory);
+
+        var mTbFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+        mTbFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty,
+            new System.Windows.Data.Binding("Text") { Mode = System.Windows.Data.BindingMode.TwoWay });
+        mTbFactory.SetValue(System.Windows.Controls.TextBox.HeightProperty, 28.0);
+        mTbFactory.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 2, 8, 2));
+        mTbFactory.SetValue(System.Windows.Controls.TextBox.VerticalContentAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        mTbFactory.SetValue(System.Windows.Controls.TextBox.FontSizeProperty, 13.0);
+        mTbFactory.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
+            new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)));
+        mTbFactory.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
+        mRowFactory.AppendChild(mTbFactory);
+
+        marketingDataTemplate.VisualTree = mRowFactory;
+        marketingQuestionsItemsControl.ItemTemplate = marketingDataTemplate;
+        marketingQuestionsItemsControl.ItemsSource = _marketingQuestions;
+
+        stackPanel.Children.Add(marketingQuestionsItemsControl);
 
         panel.Children.Add(card);
     }
 
     private void LoadNotesSection(System.Windows.Controls.Panel panel)
     {
-        // Create card container with compact styling
         var card = new WpfBorder
         {
             Background = System.Windows.Media.Brushes.White,
@@ -1704,8 +1891,8 @@ public partial class MainWindow : Window
         var stackPanel = new System.Windows.Controls.StackPanel();
         card.Child = stackPanel;
 
-        // Title - compact
-        var title = new System.Windows.Controls.TextBlock
+        // Title
+        stackPanel.Children.Add(new System.Windows.Controls.TextBlock
         {
             Text = "Notes",
             FontSize = 20,
@@ -1713,147 +1900,129 @@ public partial class MainWindow : Window
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(30, 41, 59)),
             Margin = new WpfThickness(0, 0, 0, 12)
-        };
-        stackPanel.Children.Add(title);
+        });
 
-        // Marketing Notes subtitle
-        var marketingNotesTitle = new System.Windows.Controls.TextBlock
+        // ── Marketing Notes ──────────────────────────────────────
+        stackPanel.Children.Add(new System.Windows.Controls.TextBlock
         {
-            Text = "Marketing Notes",
-            FontSize = 16,
+            Text = "Marketing Notes:",
+            FontSize = 14,
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(51, 65, 85)),
-            Margin = new WpfThickness(0, 0, 0, 12)
-        };
-        stackPanel.Children.Add(marketingNotesTitle);
+            Margin = new WpfThickness(0, 0, 0, 8)
+        });
 
-        // Meeting Summary - compact
-        var summaryLabel = new System.Windows.Controls.TextBlock
+        AddNotesSubSection(stackPanel, _marketingNotes, ref marketingNotesItemsControl,
+            AddMarketingNote_Click, DeleteMarketingNote_Click);
+
+        // ── PM Notes ─────────────────────────────────────────────
+        stackPanel.Children.Add(new System.Windows.Controls.TextBlock
         {
-            Text = "Meeting Summary:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 105)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(summaryLabel);
-
-        ApplyModernControlStyle(txtMeetingSummary);
-        txtMeetingSummary.AcceptsReturn = true;
-        txtMeetingSummary.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtMeetingSummary.MinHeight = 60;
-        txtMeetingSummary.Margin = new WpfThickness(0, 0, 0, 12);
-        SafeAddChild(stackPanel, txtMeetingSummary);
-
-        // Key Decisions - compact
-        var decisionsLabel = new System.Windows.Controls.TextBlock
-        {
-            Text = "Key Decisions:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 105)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(decisionsLabel);
-
-        ApplyModernControlStyle(txtDecisions);
-        txtDecisions.AcceptsReturn = true;
-        txtDecisions.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtDecisions.MinHeight = 60;
-        txtDecisions.Margin = new WpfThickness(0, 0, 0, 12);
-        SafeAddChild(stackPanel, txtDecisions);
-
-        // Risks - compact
-        var risksLabel = new System.Windows.Controls.TextBlock
-        {
-            Text = "Risks / Special Requirements:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 105)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(risksLabel);
-
-        ApplyModernControlStyle(txtRisks);
-        txtRisks.AcceptsReturn = true;
-        txtRisks.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtRisks.MinHeight = 60;
-        txtRisks.Margin = new WpfThickness(0, 0, 0, 16);
-        SafeAddChild(stackPanel, txtRisks);
-
-        // PM Notes subtitle
-        var pmNotesTitle = new System.Windows.Controls.TextBlock
-        {
-            Text = "PM Notes",
-            FontSize = 16,
+            Text = "PM Notes:",
+            FontSize = 14,
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(51, 65, 85)),
-            Margin = new WpfThickness(0, 0, 0, 12)
-        };
-        stackPanel.Children.Add(pmNotesTitle);
+            Margin = new WpfThickness(0, 0, 0, 8)
+        });
 
-        // Logistics - compact
-        var logisticsLabel = new System.Windows.Controls.TextBlock
-        {
-            Text = "Logistics:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 105)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(logisticsLabel);
-
-        ApplyModernControlStyle(txtLogistics);
-        txtLogistics.AcceptsReturn = true;
-        txtLogistics.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtLogistics.MinHeight = 50;
-        txtLogistics.Margin = new WpfThickness(0, 0, 0, 12);
-        SafeAddChild(stackPanel, txtLogistics);
-
-        // Software - compact
-        var softwareLabel = new System.Windows.Controls.TextBlock
-        {
-            Text = "Software:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 85)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(softwareLabel);
-
-        ApplyModernControlStyle(txtSoftware);
-        txtSoftware.AcceptsReturn = true;
-        txtSoftware.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtSoftware.MinHeight = 50;
-        txtSoftware.Margin = new WpfThickness(0, 0, 0, 12);
-        SafeAddChild(stackPanel, txtSoftware);
-
-        // Training - compact
-        var trainingLabel = new System.Windows.Controls.TextBlock
-        {
-            Text = "Training:",
-            FontSize = 12,
-            FontWeight = System.Windows.FontWeights.Medium,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(71, 85, 105)),
-            Margin = new WpfThickness(0, 0, 0, 4)
-        };
-        stackPanel.Children.Add(trainingLabel);
-
-        ApplyModernControlStyle(txtTraining);
-        txtTraining.AcceptsReturn = true;
-        txtTraining.TextWrapping = System.Windows.TextWrapping.Wrap;
-        txtTraining.MinHeight = 50;
-        SafeAddChild(stackPanel, txtTraining);
+        AddNotesSubSection(stackPanel, _pmNotes, ref pmNotesItemsControl,
+            AddPmNote_Click, DeletePmNote_Click);
 
         panel.Children.Add(card);
+    }
+
+    private void AddNotesSubSection(
+        System.Windows.Controls.StackPanel parent,
+        ObservableCollection<QuestionItem> collection,
+        ref System.Windows.Controls.ItemsControl itemsControl,
+        RoutedEventHandler addHandler,
+        RoutedEventHandler deleteHandler)
+    {
+        // Add Note button
+        var addBtn = new System.Windows.Controls.Button
+        {
+            Content = "+ Add Note",
+            Margin = new WpfThickness(0, 0, 0, 8),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            FontSize = 12
+        };
+        ApplyModernButtonStyle(addBtn);
+        addBtn.Padding = new WpfThickness(10, 2, 10, 2);
+        addBtn.Click += addHandler;
+        parent.Children.Add(addBtn);
+
+        // ItemsControl with numbered rows
+        itemsControl = new System.Windows.Controls.ItemsControl
+        {
+            Margin = new WpfThickness(0, 0, 0, 16)
+        };
+
+        var template = new System.Windows.DataTemplate();
+        var rowFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.DockPanel));
+        rowFact.SetValue(System.Windows.Controls.DockPanel.MarginProperty, new WpfThickness(0, 0, 0, 6));
+
+        var numFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+        numFact.SetBinding(System.Windows.Controls.TextBlock.TextProperty,
+            new System.Windows.Data.Binding("Number") { StringFormat = "{0}." });
+        numFact.SetValue(System.Windows.Controls.TextBlock.FontSizeProperty, 13.0);
+        numFact.SetValue(System.Windows.Controls.TextBlock.FontWeightProperty, System.Windows.FontWeights.SemiBold);
+        numFact.SetValue(System.Windows.Controls.TextBlock.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        numFact.SetValue(System.Windows.Controls.TextBlock.MarginProperty, new WpfThickness(0, 0, 4, 0));
+        numFact.SetValue(System.Windows.Controls.TextBlock.WidthProperty, 20.0);
+        numFact.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Left);
+        rowFact.AppendChild(numFact);
+
+        var delFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Button));
+        delFact.SetValue(System.Windows.Controls.Button.ContentProperty, "🗑");
+        delFact.SetValue(System.Windows.Controls.Button.FontSizeProperty, 13.0);
+        delFact.SetValue(System.Windows.Controls.Button.ForegroundProperty, System.Windows.Media.Brushes.Black);
+        delFact.SetValue(System.Windows.Controls.Button.BackgroundProperty, System.Windows.Media.Brushes.Transparent);
+        delFact.SetValue(System.Windows.Controls.Button.BorderThicknessProperty, new WpfThickness(0));
+        delFact.SetValue(System.Windows.Controls.Button.CursorProperty, System.Windows.Input.Cursors.Hand);
+        delFact.SetValue(System.Windows.Controls.Button.PaddingProperty, new WpfThickness(4, 0, 0, 0));
+        delFact.SetValue(System.Windows.Controls.Button.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        delFact.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Right);
+        delFact.SetBinding(System.Windows.Controls.Button.TagProperty, new System.Windows.Data.Binding());
+        delFact.AddHandler(System.Windows.Controls.Button.ClickEvent, deleteHandler);
+        rowFact.AppendChild(delFact);
+
+        var tbFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+        tbFact.SetBinding(System.Windows.Controls.TextBox.TextProperty,
+            new System.Windows.Data.Binding("Text") { Mode = System.Windows.Data.BindingMode.TwoWay });
+        tbFact.SetValue(System.Windows.Controls.TextBox.HeightProperty, 28.0);
+        tbFact.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 2, 8, 2));
+        tbFact.SetValue(System.Windows.Controls.TextBox.VerticalContentAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        tbFact.SetValue(System.Windows.Controls.TextBox.FontSizeProperty, 13.0);
+        tbFact.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
+            new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)));
+        tbFact.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
+        rowFact.AppendChild(tbFact);
+
+        template.VisualTree = rowFact;
+        itemsControl.ItemTemplate = template;
+        itemsControl.ItemsSource = collection;
+
+        parent.Children.Add(itemsControl);
+    }
+
+    // ── Marketing Notes handlers ──────────────────────────────────
+    private void AddMarketingNote_Click(object s, RoutedEventArgs e) =>
+        _marketingNotes.Add(new QuestionItem { Text = "", Number = _marketingNotes.Count + 1 });
+    private void DeleteMarketingNote_Click(object s, RoutedEventArgs e)
+    {
+        if (s is System.Windows.Controls.Button b && b.Tag is QuestionItem item)
+        { _marketingNotes.Remove(item); RenumberCollection(_marketingNotes); }
+    }
+
+    // ── PM Notes handlers ────────────────────────────────────────
+    private void AddPmNote_Click(object s, RoutedEventArgs e) =>
+        _pmNotes.Add(new QuestionItem { Text = "", Number = _pmNotes.Count + 1 });
+    private void DeletePmNote_Click(object s, RoutedEventArgs e)
+    {
+        if (s is System.Windows.Controls.Button b && b.Tag is QuestionItem item)
+        { _pmNotes.Remove(item); RenumberCollection(_pmNotes); }
     }
 
     private void InitializeConfigItems()
@@ -1889,11 +2058,24 @@ public partial class MainWindow : Window
 
     private void InitializeQuestions()
     {
-        _questions.Add(new QuestionItem { Text = "Define all target sizes" });
-        _questions.Add(new QuestionItem { Text = "Confirm frame grabber compatibility" });
-        _questions.Add(new QuestionItem { Text = "Confirm rack / table / logistics details" });
+        _questions.Add(new QuestionItem { Text = "", Number = 1 });
+    }
 
-        // ItemsSource will be set when LoadActionsSection is called
+    private void InitializeMarketingQuestions()
+    {
+        _marketingQuestions.Add(new QuestionItem { Text = "", Number = 1 });
+    }
+
+    private void InitializeNotes()
+    {
+        _marketingNotes.Add(new QuestionItem { Text = "", Number = 1 });
+        _pmNotes.Add(new QuestionItem { Text = "", Number = 1 });
+    }
+
+    private void RenumberCollection(ObservableCollection<QuestionItem> collection)
+    {
+        for (int i = 0; i < collection.Count; i++)
+            collection[i].Number = i + 1;
     }
 
     private void AddTarget_Click(object sender, RoutedEventArgs e)
@@ -1928,11 +2110,55 @@ public partial class MainWindow : Window
     {
         try
         {
-            _questions.Add(new QuestionItem { Text = "" });
+            _questions.Add(new QuestionItem { Text = "", Number = _questions.Count + 1 });
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Error adding question: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void AddMarketingQuestion_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _marketingQuestions.Add(new QuestionItem { Text = "", Number = _marketingQuestions.Count + 1 });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error adding marketing question: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void DeletePmQuestion_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is QuestionItem item)
+            {
+                _questions.Remove(item);
+                RenumberCollection(_questions);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error deleting question: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void DeleteMarketingQuestion_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is QuestionItem item)
+            {
+                _marketingQuestions.Remove(item);
+                RenumberCollection(_marketingQuestions);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error deleting marketing question: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -2061,28 +2287,22 @@ public partial class MainWindow : Window
                     AddBulletPoint(body, question.Text, 24);
             }
 
-            // Summary
-            if (!string.IsNullOrWhiteSpace(txtMeetingSummary.Text))
+            // Marketing Notes
+            var mktNotes = _marketingNotes.Where(n => !string.IsNullOrWhiteSpace(n.Text)).ToList();
+            if (mktNotes.Any())
             {
                 AddParagraph(body, "", 24, false);
-                AddParagraph(body, "Meeting Summary:", 24, true);
-                AddParagraph(body, txtMeetingSummary.Text, 24, false);
+                AddParagraph(body, "Marketing Notes:", 24, true);
+                foreach (var n in mktNotes) AddBulletPoint(body, n.Text, 24);
             }
 
-            // Decisions
-            if (!string.IsNullOrWhiteSpace(txtDecisions.Text))
+            // PM Notes
+            var pmNotesList = _pmNotes.Where(n => !string.IsNullOrWhiteSpace(n.Text)).ToList();
+            if (pmNotesList.Any())
             {
                 AddParagraph(body, "", 24, false);
-                AddParagraph(body, "Key Decisions:", 24, true);
-                AddParagraph(body, txtDecisions.Text, 24, false);
-            }
-
-            // Risks
-            if (!string.IsNullOrWhiteSpace(txtRisks.Text))
-            {
-                AddParagraph(body, "", 24, false);
-                AddParagraph(body, "Risks / Special Requirements:", 24, true);
-                AddParagraph(body, txtRisks.Text, 24, false);
+                AddParagraph(body, "PM Notes:", 24, true);
+                foreach (var n in pmNotesList) AddBulletPoint(body, n.Text, 24);
             }
 
             mainPart.Document.Save();
