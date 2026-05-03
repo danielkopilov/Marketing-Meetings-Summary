@@ -93,6 +93,10 @@ public partial class MainWindow : Window
     };
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
+    private System.Windows.Controls.ComboBox? _bbTypeComboBox;
+    private System.Windows.Controls.ComboBox? _bbSizeComboBox;
+    private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
+    private System.Windows.Controls.ComboBox? _backlightTypeComboBox;
     private readonly ObservableCollection<TargetItem> _targets = new();
     private readonly ObservableCollection<QuestionItem> _questions = new();
     private readonly ObservableCollection<QuestionItem> _marketingQuestions = new();
@@ -947,7 +951,7 @@ public partial class MainWindow : Window
         {
             Text = "Configuration",
             FontSize = 24,
-            FontWeight = System.Windows.FontWeights.SemiBold, // Changed from Bold to SemiBold
+            FontWeight = System.Windows.FontWeights.Normal,
             Foreground = System.Windows.Media.Brushes.Black,
             Margin = new WpfThickness(0, 0, 0, 8)
         };
@@ -1010,7 +1014,7 @@ public partial class MainWindow : Window
         {
             Text = "Radiation Source",
             FontSize = 15,
-            FontWeight = System.Windows.FontWeights.SemiBold,
+            FontWeight = System.Windows.FontWeights.Normal,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
@@ -1028,65 +1032,95 @@ public partial class MainWindow : Window
             Padding = new WpfThickness(16, 16, 16, 16)
         };
 
-        // Grid for radiation source items - 3 columns layout
+        // Grid layout: Col0=checkbox(100), Col1=label(110), Col2=combo(140), Col3=label(60), Col4=combo(100)
         var radiationGrid = new System.Windows.Controls.Grid();
-        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
-        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
-        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(110) }); // checkbox
+        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(110) }); // label1
+        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(140) }); // combo1
+        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(60)  }); // label2
+        radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(110) }); // combo2
 
-        int radRow = 0;
-        int radCol = 0;
-
+        int radRowIdx = 0;
         foreach (var item in _radiationSourceItems)
         {
-            if (radCol == 0)
-            {
-                radiationGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
-            }
+            radiationGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
 
             var checkBox = _configCheckBoxes[item];
+            if (checkBox.Parent is WpfBorder ob) ob.Child = null;
+            else if (checkBox.Parent is System.Windows.Controls.Panel op) op.Children.Remove(checkBox);
 
-            // Remove from any previous parent
-            if (checkBox.Parent is WpfBorder oldBorder)
-            {
-                oldBorder.Child = null;
-            }
-            else if (checkBox.Parent is System.Windows.Controls.Panel oldPanel)
-            {
-                oldPanel.Children.Remove(checkBox);
-            }
-
-            // Slightly more grey surrounding box for each option - less tall
-            var itemBorder = new WpfBorder
-            {
-                BorderBrush = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(229, 231, 235)), // Slightly more grey (#E5E7EB)
-                BorderThickness = new WpfThickness(1),
-                CornerRadius = new CornerRadius(6),
-                Background = System.Windows.Media.Brushes.White,
-                Padding = new WpfThickness(12, 4, 12, 4), // Reduced vertical padding from 6 to 4
-                Margin = new WpfThickness(0, 0, 8, 8), // Tight margins - close together
-                MinWidth = 160
-            };
-
-            checkBox.Margin = new WpfThickness(0);
-            checkBox.FontSize = 14;
+            checkBox.Margin = new WpfThickness(0, 0, 0, 6);
+            checkBox.FontSize = 13;
             checkBox.FontWeight = System.Windows.FontWeights.Normal;
             checkBox.Foreground = System.Windows.Media.Brushes.Black;
             checkBox.VerticalAlignment = System.Windows.VerticalAlignment.Center;
             checkBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
-            itemBorder.Child = checkBox;
 
-            System.Windows.Controls.Grid.SetRow(itemBorder, radRow);
-            System.Windows.Controls.Grid.SetColumn(itemBorder, radCol);
-            radiationGrid.Children.Add(itemBorder);
+            System.Windows.Controls.Grid.SetRow(checkBox, radRowIdx);
+            System.Windows.Controls.Grid.SetColumn(checkBox, 0);
+            radiationGrid.Children.Add(checkBox);
 
-            radCol++;
-            if (radCol >= 3)
+            if (item == "B.B")
             {
-                radCol = 0;
-                radRow++;
+                var lbl1 = MakeComboLabel("Type:");
+                lbl1.Margin = new WpfThickness(0, 0, 6, 6);
+                System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(lbl1, 1);
+                radiationGrid.Children.Add(lbl1);
+
+                _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "SR200N-33");
+                _bbTypeComboBox.SelectedIndex = 0;
+                var w1 = MakeComboWrapper(_bbTypeComboBox, 138);
+                w1.Margin = new WpfThickness(0, 0, 0, 6);
+                System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(w1, 2);
+                radiationGrid.Children.Add(w1);
+
+                var lbl2 = MakeComboLabel("Size:");
+                lbl2.Margin = new WpfThickness(8, 0, 6, 6);
+                System.Windows.Controls.Grid.SetRow(lbl2, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(lbl2, 3);
+                radiationGrid.Children.Add(lbl2);
+
+                _bbSizeComboBox = MakeWhiteComboBox(108, "1D", "2D", "4D", "8D", "12D");
+                var w2 = MakeComboWrapper(_bbSizeComboBox, 108);
+                w2.Margin = new WpfThickness(0, 0, 0, 6);
+                System.Windows.Controls.Grid.SetRow(w2, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(w2, 4);
+                radiationGrid.Children.Add(w2);
             }
+            else if (item == "I.S")
+            {
+                var lbl1 = MakeComboLabel("Exit Aperture:");
+                lbl1.Margin = new WpfThickness(0, 0, 6, 6);
+                System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(lbl1, 1);
+                radiationGrid.Children.Add(lbl1);
+
+                _isExitApertureComboBox = MakeWhiteComboBox(138, "2\"", "3\"", "4\"", "5\"");
+                var w1 = MakeComboWrapper(_isExitApertureComboBox, 138);
+                w1.Margin = new WpfThickness(0, 0, 0, 6);
+                System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(w1, 2);
+                radiationGrid.Children.Add(w1);
+            }
+            else if (item == "Backlight")
+            {
+                var lbl1 = MakeComboLabel("Type:");
+                lbl1.Margin = new WpfThickness(0, 0, 6, 6);
+                System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(lbl1, 1);
+                radiationGrid.Children.Add(lbl1);
+
+                _backlightTypeComboBox = MakeWhiteComboBox(138, "LED", "Fiber Optic");
+                var w1 = MakeComboWrapper(_backlightTypeComboBox, 138);
+                w1.Margin = new WpfThickness(0, 0, 0, 6);
+                System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(w1, 2);
+                radiationGrid.Children.Add(w1);
+            }
+
+            radRowIdx++;
         }
 
         optionsContainer.Child = radiationGrid;
@@ -1138,7 +1172,7 @@ public partial class MainWindow : Window
         {
             Text = "System Components",
             FontSize = 15,
-            FontWeight = System.Windows.FontWeights.SemiBold,
+            FontWeight = System.Windows.FontWeights.Normal,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
@@ -1668,6 +1702,52 @@ public partial class MainWindow : Window
         }
     }
 
+    private System.Windows.Controls.TextBlock MakeComboLabel(string text) =>
+        new System.Windows.Controls.TextBlock
+        {
+            Text = text,
+            FontSize = 13,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(71, 85, 105)),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Margin = new WpfThickness(16, 0, 6, 0)
+        };
+
+    private System.Windows.Controls.ComboBox MakeWhiteComboBox(int width, params string[] items)
+    {
+        var cb = new System.Windows.Controls.ComboBox
+        {
+            Width = width,
+            Style = (System.Windows.Style)FindResource("WhiteComboBox")
+        };
+        foreach (var item in items)
+            cb.Items.Add(item);
+        return cb;
+    }
+
+    private System.Windows.Controls.ComboBox MakeComboWrapper(System.Windows.Controls.ComboBox cb, int width)
+    {
+        cb.Width = width;
+        return cb;
+    }
+
+    private System.Windows.Controls.ControlTemplate CreateRoundedTextBoxControlTemplate()
+    {
+        var template = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.TextBox));
+        var borderFact = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        borderFact.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        borderFact.SetValue(WpfBorder.BorderBrushProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderBrushProperty));
+        borderFact.SetValue(WpfBorder.BorderThicknessProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderThicknessProperty));
+        borderFact.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(6));
+        borderFact.SetValue(WpfBorder.PaddingProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.PaddingProperty));
+        var scrollFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ScrollViewer));
+        scrollFact.Name = "PART_ContentHost";
+        scrollFact.SetValue(System.Windows.Controls.ScrollViewer.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        borderFact.AppendChild(scrollFact);
+        template.VisualTree = borderFact;
+        return template;
+    }
+
     private void ApplyRoundedTextBoxTemplate(System.Windows.Controls.TextBox textBox)
     {
         var template = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.TextBox));
@@ -1785,6 +1865,7 @@ public partial class MainWindow : Window
         tbFactory.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
             new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)));
         tbFactory.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
+        tbFactory.SetValue(System.Windows.Controls.Control.TemplateProperty, CreateRoundedTextBoxControlTemplate());
         rowFactory.AppendChild(tbFactory);
 
         dataTemplate.VisualTree = rowFactory;
@@ -1864,6 +1945,7 @@ public partial class MainWindow : Window
         mTbFactory.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
             new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)));
         mTbFactory.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
+        mTbFactory.SetValue(System.Windows.Controls.Control.TemplateProperty, CreateRoundedTextBoxControlTemplate());
         mRowFactory.AppendChild(mTbFactory);
 
         marketingDataTemplate.VisualTree = mRowFactory;
@@ -1998,6 +2080,7 @@ public partial class MainWindow : Window
         tbFact.SetValue(System.Windows.Controls.TextBox.BorderBrushProperty,
             new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)));
         tbFact.SetValue(System.Windows.Controls.TextBox.BorderThicknessProperty, new WpfThickness(1));
+        tbFact.SetValue(System.Windows.Controls.Control.TemplateProperty, CreateRoundedTextBoxControlTemplate());
         rowFact.AppendChild(tbFact);
 
         template.VisualTree = rowFact;
@@ -2033,7 +2116,8 @@ public partial class MainWindow : Window
             var checkBox = new WpfCheckBox
             {
                 Content = item,
-                FontSize = 12
+                FontSize = 12,
+                FontWeight = System.Windows.FontWeights.Normal
             };
             _configCheckBoxes[item] = checkBox;
         }
@@ -2044,7 +2128,8 @@ public partial class MainWindow : Window
             var checkBox = new WpfCheckBox
             {
                 Content = item,
-                FontSize = 12
+                FontSize = 12,
+                FontWeight = System.Windows.FontWeights.Normal
             };
             _configCheckBoxes[item] = checkBox;
         }
@@ -2242,7 +2327,29 @@ public partial class MainWindow : Window
             // Configuration
             var configLines = _configCheckBoxes
                 .Where(kv => kv.Value.IsChecked == true)
-                .Select(kv => kv.Key);
+                .Select(kv =>
+                {
+                    if (kv.Key == "B.B")
+                    {
+                        var type = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
+                        var size = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
+                        var extras = new List<string>();
+                        if (!string.IsNullOrEmpty(type)) extras.Add($"Type: {type}");
+                        if (!string.IsNullOrEmpty(size)) extras.Add($"Size: {size}");
+                        return extras.Count > 0 ? $"B.B ({string.Join(", ", extras)})" : "B.B";
+                    }
+                    if (kv.Key == "I.S")
+                    {
+                        var aperture = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
+                        return !string.IsNullOrEmpty(aperture) ? $"I.S (Exit Aperture: {aperture})" : "I.S";
+                    }
+                    if (kv.Key == "Backlight")
+                    {
+                        var btype = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
+                        return !string.IsNullOrEmpty(btype) ? $"Backlight (Type: {btype})" : "Backlight";
+                    }
+                    return kv.Key;
+                });
 
             if (!string.IsNullOrWhiteSpace(txtCustomConfig.Text))
             {
