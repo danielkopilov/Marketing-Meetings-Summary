@@ -61,8 +61,9 @@
             <Setter Property="Foreground" Value="#1E293B"/>
             <Setter Property="BorderBrush" Value="#D1D5DB"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Height" Value="26"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Height" Value="28"/>
             <Setter Property="Padding" Value="4,0,2,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -80,13 +81,16 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="20"/>
                                     </Grid.ColumnDefinitions>
-                                    <ContentPresenter Grid.Column="0"
-                                                      Content="{TemplateBinding SelectionBoxItem}"
-                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                      Margin="4,-2,0,0"
-                                                      VerticalAlignment="Center"
-                                                      HorizontalAlignment="Center"
-                                                      IsHitTestVisible="False"/>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{TemplateBinding SelectionBoxItem}"
+                                               Margin="4,0,0,0"
+                                               Padding="0"
+                                               FontSize="{TemplateBinding FontSize}"
+                                               FontWeight="Normal"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"
+                                               IsHitTestVisible="False"/>
                                     <Path Grid.Column="1"
                                           Data="M 0 0 L 4 4 L 8 0 Z"
                                           Fill="#64748B"
@@ -379,5 +383,6 @@
                 </ScrollViewer>
             </Border>
         </StackPanel>
+        <Image Source="/Image1.png" Stretch="Fill"/>
     </Grid>
 </Window>

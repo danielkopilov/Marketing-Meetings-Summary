@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using System.Xml.Linq;
 using Microsoft.Win32;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
@@ -97,6 +98,14 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _bbSizeComboBox;
     private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
     private System.Windows.Controls.ComboBox? _backlightTypeComboBox;
+    private System.Windows.Controls.TextBox? _maxWeightTextBox;
+    private System.Windows.Controls.TextBox? _finiteDistance1TextBox;
+    private System.Windows.Controls.TextBox? _finiteDistance2TextBox;
+    private System.Windows.Controls.TextBox? _finiteDistance3TextBox;
+    private System.Windows.Controls.ComboBox? _vrsComboBox1;
+    private System.Windows.Controls.ComboBox? _vrsComboBox2;
+    private System.Windows.Controls.ComboBox? _vrsComboBox3;
+    private System.Windows.Controls.TextBox? _gimbalSizeTextBox;
     private readonly ObservableCollection<TargetItem> _targets = new();
     private readonly ObservableCollection<QuestionItem> _questions = new();
     private readonly ObservableCollection<QuestionItem> _marketingQuestions = new();
@@ -293,7 +302,7 @@ public partial class MainWindow : Window
         AddFormField(orderFormGrid, "Customer Name:", txtCustomerName, row++, 1, 2);
 
         // Agent and Project Type side by side
-        AddFormField(orderFormGrid, "Agent:", txtFinalCustomer, row, 0, 1);
+        AddFormField(orderFormGrid, "Territory:", txtFinalCustomer, row, 0, 1);
         AddFormField(orderFormGrid, "Project Type:", txtProjectType, row++, 1, 2);
 
         // Paka Number, Delivery Date, Design Due Date (all side by side)
@@ -1014,7 +1023,7 @@ public partial class MainWindow : Window
         {
             Text = "Radiation Source",
             FontSize = 15,
-            FontWeight = System.Windows.FontWeights.Normal,
+            FontWeight = System.Windows.FontWeights.Bold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
@@ -1041,20 +1050,29 @@ public partial class MainWindow : Window
         radiationGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(110) }); // combo2
 
         int radRowIdx = 0;
+
+        // B.B, I.S, Backlight each get their own row (they have inline combo controls).
+        // LOS Laser + QTH Lamp share one row side-by-side.
+        var simpleRadItems = new List<string>();
+
         foreach (var item in _radiationSourceItems)
         {
+            bool isSimple = item is "LOS Laser" or "QTH Lamp";
+            if (isSimple) { simpleRadItems.Add(item); continue; }
+
             radiationGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
 
             var checkBox = _configCheckBoxes[item];
             if (checkBox.Parent is WpfBorder ob) ob.Child = null;
             else if (checkBox.Parent is System.Windows.Controls.Panel op) op.Children.Remove(checkBox);
 
-            checkBox.Margin = new WpfThickness(0, 0, 0, 6);
-            checkBox.FontSize = 13;
+            checkBox.Margin = new WpfThickness(0, 0, 0, 14);
+            checkBox.FontSize = 14;
             checkBox.FontWeight = System.Windows.FontWeights.Normal;
             checkBox.Foreground = System.Windows.Media.Brushes.Black;
             checkBox.VerticalAlignment = System.Windows.VerticalAlignment.Center;
             checkBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
+            if (checkBox.Content is System.Windows.Controls.TextBlock cbtb) { cbtb.FontSize = 14; cbtb.FontWeight = System.Windows.FontWeights.Normal; }
 
             System.Windows.Controls.Grid.SetRow(checkBox, radRowIdx);
             System.Windows.Controls.Grid.SetColumn(checkBox, 0);
@@ -1063,7 +1081,7 @@ public partial class MainWindow : Window
             if (item == "B.B")
             {
                 var lbl1 = MakeComboLabel("Type:");
-                lbl1.Margin = new WpfThickness(0, 0, 6, 6);
+                lbl1.Margin = new WpfThickness(0, 0, 6, 14);
                 System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl1, 1);
                 radiationGrid.Children.Add(lbl1);
@@ -1071,20 +1089,20 @@ public partial class MainWindow : Window
                 _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "SR200N-33");
                 _bbTypeComboBox.SelectedIndex = 0;
                 var w1 = MakeComboWrapper(_bbTypeComboBox, 138);
-                w1.Margin = new WpfThickness(0, 0, 0, 6);
+                w1.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w1, 2);
                 radiationGrid.Children.Add(w1);
 
                 var lbl2 = MakeComboLabel("Size:");
-                lbl2.Margin = new WpfThickness(8, 0, 6, 6);
+                lbl2.Margin = new WpfThickness(8, 0, 6, 14);
                 System.Windows.Controls.Grid.SetRow(lbl2, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl2, 3);
                 radiationGrid.Children.Add(lbl2);
 
                 _bbSizeComboBox = MakeWhiteComboBox(108, "1D", "2D", "4D", "8D", "12D");
                 var w2 = MakeComboWrapper(_bbSizeComboBox, 108);
-                w2.Margin = new WpfThickness(0, 0, 0, 6);
+                w2.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w2, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w2, 4);
                 radiationGrid.Children.Add(w2);
@@ -1092,14 +1110,14 @@ public partial class MainWindow : Window
             else if (item == "I.S")
             {
                 var lbl1 = MakeComboLabel("Exit Aperture:");
-                lbl1.Margin = new WpfThickness(0, 0, 6, 6);
+                lbl1.Margin = new WpfThickness(0, 0, 6, 14);
                 System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl1, 1);
                 radiationGrid.Children.Add(lbl1);
 
                 _isExitApertureComboBox = MakeWhiteComboBox(138, "2\"", "3\"", "4\"", "5\"");
                 var w1 = MakeComboWrapper(_isExitApertureComboBox, 138);
-                w1.Margin = new WpfThickness(0, 0, 0, 6);
+                w1.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w1, 2);
                 radiationGrid.Children.Add(w1);
@@ -1107,20 +1125,47 @@ public partial class MainWindow : Window
             else if (item == "Backlight")
             {
                 var lbl1 = MakeComboLabel("Type:");
-                lbl1.Margin = new WpfThickness(0, 0, 6, 6);
+                lbl1.Margin = new WpfThickness(0, 0, 6, 14);
                 System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl1, 1);
                 radiationGrid.Children.Add(lbl1);
 
                 _backlightTypeComboBox = MakeWhiteComboBox(138, "LED", "Fiber Optic");
                 var w1 = MakeComboWrapper(_backlightTypeComboBox, 138);
-                w1.Margin = new WpfThickness(0, 0, 0, 6);
+                w1.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w1, 2);
                 radiationGrid.Children.Add(w1);
             }
 
             radRowIdx++;
+        }
+
+        // LOS Laser + QTH Lamp on one shared row
+        if (simpleRadItems.Count > 0)
+        {
+            radiationGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int colOffset = 0;
+            foreach (var si in simpleRadItems)
+            {
+                var cb = _configCheckBoxes[si];
+                if (cb.Parent is WpfBorder ob2) ob2.Child = null;
+                else if (cb.Parent is System.Windows.Controls.Panel op2) op2.Children.Remove(cb);
+
+                cb.Margin = new WpfThickness(0, 10, 24, 14);
+                cb.FontSize = 14;
+                cb.FontWeight = System.Windows.FontWeights.Normal;
+                cb.Foreground = System.Windows.Media.Brushes.Black;
+                cb.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+                cb.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
+                if (cb.Content is System.Windows.Controls.TextBlock stb) { stb.FontSize = 14; stb.FontWeight = System.Windows.FontWeights.Normal; }
+
+                System.Windows.Controls.Grid.SetRow(cb, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(cb, colOffset);
+                System.Windows.Controls.Grid.SetColumnSpan(cb, colOffset == 0 ? 1 : 4);
+                radiationGrid.Children.Add(cb);
+                colOffset = 1; // second item starts at col 1, spans remaining
+            }
         }
 
         optionsContainer.Child = radiationGrid;
@@ -1172,7 +1217,7 @@ public partial class MainWindow : Window
         {
             Text = "System Components",
             FontSize = 15,
-            FontWeight = System.Windows.FontWeights.Normal,
+            FontWeight = System.Windows.FontWeights.Bold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(37, 99, 235)), // Blue color
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
@@ -1190,62 +1235,198 @@ public partial class MainWindow : Window
             Padding = new WpfThickness(16, 16, 16, 16)
         };
 
-        // Grid for system components - 3 columns layout
-        var componentsGrid = new System.Windows.Controls.Grid();
-        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
-        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
-        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
-
-        int row = 0;
-        int col = 0;
-        foreach (var item in _systemComponentsItems)
+        // Helper: detach a checkbox from any previous parent
+        void DetachCheckBox(WpfCheckBox cb)
         {
-            if (col == 0)
-            {
-                componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
-            }
+            if (cb.Parent is WpfBorder ob) ob.Child = null;
+            else if (cb.Parent is System.Windows.Controls.Panel op) op.Children.Remove(cb);
+        }
 
-            var checkBox = _configCheckBoxes[item];
-            if (checkBox.Parent is WpfBorder oldBorder)
-            {
-                oldBorder.Child = null;
-            }
-            else if (checkBox.Parent is System.Windows.Controls.Panel oldParent)
-            {
-                oldParent.Children.Remove(checkBox);
-            }
+        // Helper: style a checkbox for System Components (not bold)
+        void StyleSysCheckBox(WpfCheckBox cb)
+        {
+            cb.Margin = new WpfThickness(0);
+            cb.FontSize = 14;
+            cb.FontWeight = System.Windows.FontWeights.Normal;
+            cb.Foreground = System.Windows.Media.Brushes.Black;
+            cb.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+            cb.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
+            if (cb.Content is System.Windows.Controls.TextBlock cbtb2) { cbtb2.FontSize = 14; cbtb2.FontWeight = System.Windows.FontWeights.Normal; }
+        }
 
-            // Same styling as Radiation Source - compact boxes
-            var itemBorder = new WpfBorder
+        // Helper: create a small label
+        System.Windows.Controls.TextBlock SysLabel(string text) =>
+            new System.Windows.Controls.TextBlock
             {
-                BorderBrush = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(229, 231, 235)), // Slightly more grey (#E5E7EB)
-                BorderThickness = new WpfThickness(1),
-                CornerRadius = new CornerRadius(6),
-                Background = System.Windows.Media.Brushes.White,
-                Padding = new WpfThickness(12, 4, 12, 4), // Same compact padding as Radiation Source
-                Margin = new WpfThickness(0, 0, 8, 8), // Tight margins - close together
-                MinWidth = 160
+                Text = text,
+                FontSize = 14,
+                FontWeight = System.Windows.FontWeights.Normal,
+                Foreground = System.Windows.Media.Brushes.Black,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(6, 0, 4, 0)
             };
 
-            checkBox.Margin = new WpfThickness(0);
-            checkBox.FontSize = 14;
-            checkBox.FontWeight = System.Windows.FontWeights.Normal;
-            checkBox.Foreground = System.Windows.Media.Brushes.Black;
-            checkBox.VerticalAlignment = System.Windows.VerticalAlignment.Center;
-            checkBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
-            itemBorder.Child = checkBox;
-
-            System.Windows.Controls.Grid.SetRow(itemBorder, row);
-            System.Windows.Controls.Grid.SetColumn(itemBorder, col);
-            componentsGrid.Children.Add(itemBorder);
-
-            col++;
-            if (col >= 3)
+        // Helper: create a small textbox
+        System.Windows.Controls.TextBox SysTextBox(double width) =>
+            new System.Windows.Controls.TextBox
             {
-                col = 0;
-                row++;
-            }
+                Width = width,
+                Height = 26,
+                FontSize = 14,
+                Padding = new WpfThickness(4, 1, 4, 1),
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+            };
+
+        // Helper: inline combobox
+        System.Windows.Controls.ComboBox SysComboBox(double width) =>
+            new System.Windows.Controls.ComboBox
+            {
+                Width = width,
+                Height = 26,
+                FontSize = 14,
+                FontWeight = System.Windows.FontWeights.Normal,
+                Padding = new WpfThickness(4, 1, 4, 1),
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(4, 0, 0, 0)
+            };
+
+        // Grid layout:
+        // col0 = 190px  (left checkboxes: Source Stage, CTE, XY Stage + inline rows — fixed so spacing equals col1/col2)
+        // col1 = 190px  (rows 0-2: Rackmount/Device Center/Power Meter  |  rows 3/4/6: inline dim label)
+        // col2 = 190px  (rows 0-2: Manual Choke/LOS alignment target/Energy Meter  |  rows 3/4/6: inline textbox)
+        // col3 = Auto   (inline unit: [KG], [m], [Inches] — empty in rows 0-2)
+        var componentsGrid = new System.Windows.Controls.Grid();
+        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(190) });  // col0
+        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(190) });  // col1
+        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(190) });  // col2
+        componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });       // col3 unit
+
+        // Rows 0-2: the 9 plain checkboxes in a 3-column sub-arrangement using col0, col4, col5
+        string[] top9 = { "Source Stage", "Rackmount", "Manual Choke",
+                           "CTE", "Device Center", "LOS alignment target",
+                           "XY Stage", "Power Meter", "Energy Meter" };
+
+        // Column mapping: left col → grid col0, middle col → grid col1, right col → grid col2
+        int[] top9GridCols = { 0, 1, 2 };
+
+        for (int i = 0; i < top9.Length; i++)
+        {
+            if (i % 3 == 0)
+                componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+
+            var cb = _configCheckBoxes[top9[i]];
+            DetachCheckBox(cb);
+            StyleSysCheckBox(cb);
+            cb.Margin = new WpfThickness(0, 0, 0, 14);
+
+            System.Windows.Controls.Grid.SetRow(cb, i / 3);
+            System.Windows.Controls.Grid.SetColumn(cb, top9GridCols[i % 3]);
+            componentsGrid.Children.Add(cb);
+        }
+
+        // Dimmed style helpers for inline labels/units
+        var dimColor = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromRgb(160, 160, 160));
+        const double dimFontSize = 12;
+
+        System.Windows.Controls.TextBlock DimLabel(string text) =>
+            new System.Windows.Controls.TextBlock
+            {
+                Text = text,
+                FontSize = dimFontSize,
+                FontWeight = System.Windows.FontWeights.Normal,
+                Foreground = dimColor,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(4, 0, 2, 14)
+            };
+
+        System.Windows.Controls.TextBox DimTextBox(double width) =>
+            new System.Windows.Controls.TextBox
+            {
+                Width = width,
+                Height = 24,
+                FontSize = dimFontSize,
+                Foreground = dimColor,
+                Padding = new WpfThickness(3, 1, 3, 1),
+                Margin = new WpfThickness(2, 0, 0, 14),
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+            };
+
+        // ── Row 3: NewPort Stage | Max Weight: [___] [KG] ─────────────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 3;
+
+            var cbNP = _configCheckBoxes["NewPort Stage"];
+            DetachCheckBox(cbNP); StyleSysCheckBox(cbNP);
+            cbNP.Margin = new WpfThickness(0, 0, 0, 0);
+
+            var lblMW = DimLabel("Max Weight:"); lblMW.Margin = new WpfThickness(20, 0, 4, 0);
+            _maxWeightTextBox = DimTextBox(55); _maxWeightTextBox.Margin = new WpfThickness(0);
+            var lblKG = DimLabel("[KG]"); lblKG.Margin = new WpfThickness(4, 0, 0, 0);
+
+            var mwRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            mwRow.Children.Add(cbNP); mwRow.Children.Add(lblMW); mwRow.Children.Add(_maxWeightTextBox); mwRow.Children.Add(lblKG);
+            System.Windows.Controls.Grid.SetRow(mwRow, r); System.Windows.Controls.Grid.SetColumn(mwRow, 0); System.Windows.Controls.Grid.SetColumnSpan(mwRow, 4);
+            componentsGrid.Children.Add(mwRow);
+        }
+
+        // ── Row 4: Focus Stage | Finite Distance: [___] [m] ──────────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 4;
+
+            var cbFS = _configCheckBoxes["Focus Stage"];
+            DetachCheckBox(cbFS); StyleSysCheckBox(cbFS);
+            cbFS.Margin = new WpfThickness(0, 0, 0, 0);
+
+            var lblFD = DimLabel("Finite Distance:"); lblFD.Margin = new WpfThickness(20, 0, 4, 0);
+            _finiteDistance1TextBox = DimTextBox(55); _finiteDistance1TextBox.Margin = new WpfThickness(0);
+            _finiteDistance2TextBox = null; _finiteDistance3TextBox = null;
+            var lblM = DimLabel("[m]"); lblM.Margin = new WpfThickness(4, 0, 0, 0);
+
+            var fdRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            fdRow.Children.Add(cbFS); fdRow.Children.Add(lblFD); fdRow.Children.Add(_finiteDistance1TextBox); fdRow.Children.Add(lblM);
+            System.Windows.Controls.Grid.SetRow(fdRow, r); System.Windows.Controls.Grid.SetColumn(fdRow, 0); System.Windows.Controls.Grid.SetColumnSpan(fdRow, 4);
+            componentsGrid.Children.Add(fdRow);
+        }
+
+        // ── Row 5: VRS (checkbox only) ────────────────────────────────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 5;
+
+            var cbVRS = _configCheckBoxes["VRS"];
+            DetachCheckBox(cbVRS); StyleSysCheckBox(cbVRS);
+            cbVRS.Margin = new WpfThickness(0, 0, 0, 14);
+            System.Windows.Controls.Grid.SetRow(cbVRS, r); System.Windows.Controls.Grid.SetColumn(cbVRS, 0);
+            componentsGrid.Children.Add(cbVRS);
+
+            _vrsComboBox1 = null;
+            _vrsComboBox2 = null;
+            _vrsComboBox3 = null;
+        }
+
+        // ── Row 6: Gimbal | Size: [___] [Inches] ──────────────────────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 6;
+
+            var cbGimbal = _configCheckBoxes["Gimbal"];
+            DetachCheckBox(cbGimbal); StyleSysCheckBox(cbGimbal);
+            cbGimbal.Margin = new WpfThickness(0, 0, 0, 0);
+
+            var lblSize = DimLabel("Size:"); lblSize.Margin = new WpfThickness(20, 0, 4, 0);
+            _gimbalSizeTextBox = DimTextBox(55); _gimbalSizeTextBox.Margin = new WpfThickness(0);
+            var lblInches = DimLabel("[Inches]"); lblInches.Margin = new WpfThickness(4, 0, 0, 0);
+
+            var szRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            szRow.Children.Add(cbGimbal); szRow.Children.Add(lblSize); szRow.Children.Add(_gimbalSizeTextBox); szRow.Children.Add(lblInches);
+            System.Windows.Controls.Grid.SetRow(szRow, r); System.Windows.Controls.Grid.SetColumn(szRow, 0); System.Windows.Controls.Grid.SetColumnSpan(szRow, 4);
+            componentsGrid.Children.Add(szRow);
         }
 
         systemOptionsContainer.Child = componentsGrid;
@@ -1706,7 +1887,8 @@ public partial class MainWindow : Window
         new System.Windows.Controls.TextBlock
         {
             Text = text,
-            FontSize = 13,
+            FontSize = 14,
+            FontWeight = System.Windows.FontWeights.Normal,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(71, 85, 105)),
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
@@ -2115,8 +2297,14 @@ public partial class MainWindow : Window
         {
             var checkBox = new WpfCheckBox
             {
-                Content = item,
-                FontSize = 12,
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = item,
+                    FontSize = 14,
+                    FontWeight = System.Windows.FontWeights.Normal,
+                    Margin = new WpfThickness(0)
+                },
+                FontSize = 14,
                 FontWeight = System.Windows.FontWeights.Normal
             };
             _configCheckBoxes[item] = checkBox;
@@ -2127,8 +2315,14 @@ public partial class MainWindow : Window
         {
             var checkBox = new WpfCheckBox
             {
-                Content = item,
-                FontSize = 12,
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = item,
+                    FontSize = 14,
+                    FontWeight = System.Windows.FontWeights.Normal,
+                    Margin = new WpfThickness(0)
+                },
+                FontSize = 14,
                 FontWeight = System.Windows.FontWeights.Normal
             };
             _configCheckBoxes[item] = checkBox;
@@ -2251,29 +2445,29 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(txtOrderNumber.Text))
         {
-            MessageBox.Show("Please enter an Order Number.", "Required Field", 
+            MessageBox.Show("Please enter an Order Number.", "Required Field",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
-            LoadSection(0); // Navigate to Overview section
+            LoadSection(0);
             txtOrderNumber.Focus();
             return;
         }
 
         SaveFileDialog saveDialog = new SaveFileDialog
         {
-            Filter = "Word Documents (*.docx)|*.docx",
-            DefaultExt = "docx",
-            FileName = $"Kickoff {txtOrderNumber.Text}.docx"
+            Filter = "Word Document (*.doc)|*.doc",
+            DefaultExt = "doc",
+            FileName = $"Kickoff {txtOrderNumber.Text}.doc"
         };
 
         if (saveDialog.ShowDialog() == true)
         {
             try
             {
-                GenerateWordDocument(saveDialog.FileName);
-                MessageBox.Show($"Document successfully created!\n\nSaved to:\n{saveDialog.FileName}", 
+                GenerateFromTemplate(saveDialog.FileName);
+                MessageBox.Show($"Document successfully created!\n\nSaved to:\n{saveDialog.FileName}",
                     "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                if (MessageBox.Show("Would you like to open the document now?", "Open Document", 
+                if (MessageBox.Show("Would you like to open the document now?", "Open Document",
                     MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -2285,15 +2479,303 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error creating document:\n\n{ex.Message}", "Error", 
+                MessageBox.Show($"Error creating document:\n\n{ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
 
-    private void GenerateWordDocument(string filePath)
+    private void GenerateFromTemplate(string outputPath)
     {
-        using (WordprocessingDocument wordDoc = WordprocessingDocument.Create(filePath, 
+        string templatePath = System.IO.Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "Marketing_Meeting_Summary_Template.xml");
+
+        if (!System.IO.File.Exists(templatePath))
+            throw new System.IO.FileNotFoundException($"Template not found at:\n{templatePath}");
+
+        XDocument doc;
+        using (var fs = new System.IO.FileStream(templatePath, System.IO.FileMode.Open,
+                   System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+            doc = XDocument.Load(fs, LoadOptions.PreserveWhitespace);
+
+        XNamespace w   = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        XNamespace pkg = "http://schemas.microsoft.com/office/2006/xmlPackage";
+
+        var wordPart = doc.Root!
+            .Elements(pkg + "part")
+            .FirstOrDefault(p => ((string?)p.Attribute(pkg + "name")) == "/word/document.xml")
+            ?? throw new InvalidOperationException("Cannot find /word/document.xml in template.");
+
+        var body = wordPart
+            .Element(pkg + "xmlData")!
+            .Element(w + "document")!
+            .Element(w + "body")!;
+
+        // Collect all searchable containers: body + all header/footer parts
+        var allContainers = new List<XElement> { body };
+        foreach (var part in doc.Root!.Elements(pkg + "part"))
+        {
+            var partName = (string?)part.Attribute(pkg + "name") ?? "";
+            if (partName.StartsWith("/word/header") || partName.StartsWith("/word/footer"))
+            {
+                var hdrBody = part.Element(pkg + "xmlData")?.Elements().FirstOrDefault();
+                if (hdrBody != null) allContainers.Add(hdrBody);
+            }
+        }
+
+        // ── Local helpers ─────────────────────────────────────────────────────
+        bool IsRedRun(XElement r)
+        {
+            var color = r.Element(w + "rPr")?.Element(w + "color");
+            return ((string?)color?.Attribute(w + "val"))
+                   ?.Equals("EE0000", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        string RunText(XElement r) =>
+            string.Concat(r.Elements(w + "t").Select(t => (string?)t ?? ""));
+
+        void MakeBlackRun(XElement r, string value)
+        {
+            var rPr = r.Element(w + "rPr");
+            if (rPr != null)
+            {
+                rPr.Elements(w + "b").Remove();
+                rPr.Elements(w + "bCs").Remove();
+                rPr.Elements(w + "color").Remove();
+            }
+            r.Elements(w + "t").Remove();
+            var t = new XElement(w + "t", value);
+            if (value.StartsWith(" ") || value.EndsWith(" "))
+                t.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+            r.Add(t);
+        }
+
+        void ReplacePlaceholder(string placeholder, string value)
+        {
+            foreach (var container in allContainers)
+            {
+                var run = container.Descendants(w + "r")
+                    .FirstOrDefault(r => IsRedRun(r) && RunText(r) == placeholder);
+                if (run != null) { MakeBlackRun(run, value); break; }
+            }
+        }
+
+        void InjectAfterLabelRun(string labelFragment, string value)
+        {
+            foreach (var container in allContainers)
+            {
+                var run = container.Descendants(w + "r")
+                    .FirstOrDefault(r => RunText(r).Contains(labelFragment));
+                if (run == null) continue;
+                var extra = new XElement(w + "r",
+                    new XElement(w + "rPr",
+                        new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                        new XElement(w + "szCs", new XAttribute(w + "val", "22"))),
+                    new XElement(w + "t",
+                        new XAttribute(XNamespace.Xml + "space", "preserve"), value));
+                run.AddAfterSelf(extra);
+                break;
+            }
+        }
+
+        XElement MakeBulletPara(string text)
+        {
+            return new XElement(w + "p",
+                new XElement(w + "pPr",
+                    new XElement(w + "spacing", new XAttribute(w + "after", "80"))),
+                new XElement(w + "r",
+                    new XElement(w + "rPr",
+                        new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                        new XElement(w + "szCs", new XAttribute(w + "val", "22"))),
+                    new XElement(w + "t",
+                        new XAttribute(XNamespace.Xml + "space", "preserve"),
+                        text)));
+        }
+
+        void ReplaceMarkerParagraph(string markerFragment, IEnumerable<string> lines)
+        {
+            var para = body.Descendants(w + "p").FirstOrDefault(p =>
+                string.Concat(p.Descendants(w + "t").Select(t => (string?)t ?? ""))
+                      .Contains(markerFragment));
+            if (para == null) return;
+
+            var bullets = lines.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+            var replacements = (bullets.Count > 0 ? bullets : new List<string> { "" })
+                .Select(MakeBulletPara).ToArray<object>();
+
+            para.AddAfterSelf(replacements);
+            para.Remove();
+        }
+
+        // ── Simple field replacements ─────────────────────────────────────────
+        ReplacePlaceholder("Order Number",   txtOrderNumber.Text);
+        ReplacePlaceholder("Customer Name",  txtCustomerName.Text);
+        ReplacePlaceholder("Territory",      txtFinalCustomer.Text);
+        ReplacePlaceholder("Paka Number",    txtPakaNumber.Text);
+        ReplacePlaceholder("Project Type",   txtProjectType.Text);
+        ReplacePlaceholder("Project Hours",  txtProjectHours.Text);
+        ReplacePlaceholder("Selling Price",  txtSellingPrice.Text);
+        ReplacePlaceholder("Material Cost",  txtMaterialCost.Text);
+        ReplacePlaceholder("Penalties",      txtPenalties.Text);
+        ReplacePlaceholder("Reference Order", txtReferenceOrder.Text);
+        InjectAfterLabelRun("D.O Rated:", chkDORated.IsChecked == true ? "Yes" : "No");
+
+        ReplacePlaceholder("Delivery Date",
+            dpDeliveryDate.SelectedDate.HasValue
+                ? dpDeliveryDate.SelectedDate.Value.ToString("dd.MM.yyyy") : "");
+        ReplacePlaceholder("Design Due Date",
+            dpDesignDueDate.SelectedDate.HasValue
+                ? dpDesignDueDate.SelectedDate.Value.ToString("dd.MM.yyyy") : "");
+
+        // ── Targets table cell ────────────────────────────────────────────────
+        var targetItems = _targets
+            .Where(t => !string.IsNullOrWhiteSpace(t.Qty) || !string.IsNullOrWhiteSpace(t.Type))
+            .ToList();
+
+        var targetNameRun = body.Descendants(w + "r")
+            .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Target Name");
+        if (targetNameRun != null)
+        {
+            var templateRow = targetNameRun.Ancestors(w + "tr").First();
+            // Save a pristine copy BEFORE modifying the first row, so clones get clean placeholders
+            var pristineRow = new XElement(templateRow);
+            var sizeUnitRun = templateRow.Descendants(w + "r")
+                .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size Unit");
+
+            if (targetItems.Count == 0)
+            {
+                MakeBlackRun(targetNameRun, "");
+                if (sizeUnitRun != null) MakeBlackRun(sizeUnitRun, "");
+            }
+            else
+            {
+                MakeBlackRun(targetNameRun, targetItems[0].Type);
+                // Center-align the Target cell paragraph
+                var targetPara = targetNameRun.Parent;
+                if (targetPara != null)
+                {
+                    var pPr = targetPara.Element(w + "pPr") ?? new XElement(w + "pPr");
+                    if (targetPara.Element(w + "pPr") == null) targetPara.AddFirst(pPr);
+                    pPr.Elements(w + "jc").Remove();
+                    pPr.Add(new XElement(w + "jc", new XAttribute(w + "val", "center")));
+                }
+                if (sizeUnitRun != null)
+                    MakeBlackRun(sizeUnitRun,
+                        $"{targetItems[0].Qty} {targetItems[0].Details}".Trim());
+
+                var insertAfter = templateRow;
+                for (int i = 1; i < targetItems.Count; i++)
+                {
+                    // Clone from the pristine (unmodified) template row
+                    var clonedRow = new XElement(pristineRow);
+                    var cloneNameRun = clonedRow.Descendants(w + "r")
+                        .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Target Name");
+                    var cloneSizeRun = clonedRow.Descendants(w + "r")
+                        .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size Unit");
+                    if (cloneNameRun != null)
+                    {
+                        MakeBlackRun(cloneNameRun, targetItems[i].Type);
+                        var cloneTargetPara = cloneNameRun.Parent;
+                        if (cloneTargetPara != null)
+                        {
+                            var pPr = cloneTargetPara.Element(w + "pPr") ?? new XElement(w + "pPr");
+                            if (cloneTargetPara.Element(w + "pPr") == null) cloneTargetPara.AddFirst(pPr);
+                            pPr.Elements(w + "jc").Remove();
+                            pPr.Add(new XElement(w + "jc", new XAttribute(w + "val", "center")));
+                        }
+                    }
+                    if (cloneSizeRun != null)
+                        MakeBlackRun(cloneSizeRun,
+                            $"{targetItems[i].Qty} {targetItems[i].Details}".Trim());
+                    insertAfter.AddAfterSelf(clonedRow);
+                    insertAfter = clonedRow;
+                }
+            }
+        }
+
+        // Convert leftover lone red space / separator runs to black (they carry spacing between fields)
+        foreach (var container in allContainers)
+        foreach (var r in container.Descendants(w + "r").Where(r => IsRedRun(r)).ToList())
+        {
+            var rPr = r.Element(w + "rPr");
+            if (rPr != null)
+            {
+                rPr.Elements(w + "b").Remove();
+                rPr.Elements(w + "bCs").Remove();
+                rPr.Elements(w + "color").Remove();
+            }
+        }
+
+        // ── Configuration table cell ──────────────────────────────────────────
+        var configLines = _configCheckBoxes
+            .Where(kv => kv.Value.IsChecked == true)
+            .Select(kv =>
+            {
+                if (kv.Key == "B.B")
+                {
+                    var parts = new List<string>();
+                    var bt = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
+                    var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
+                    if (!string.IsNullOrEmpty(bt)) parts.Add($"Type: {bt}");
+                    if (!string.IsNullOrEmpty(bs)) parts.Add($"Size: {bs}");
+                    return parts.Count > 0 ? $"B.B ({string.Join(", ", parts)})" : "B.B";
+                }
+                if (kv.Key == "I.S")
+                {
+                    var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
+                    return !string.IsNullOrEmpty(ap) ? $"I.S (Exit Aperture: {ap})" : "I.S";
+                }
+                if (kv.Key == "Backlight")
+                {
+                    var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
+                    return !string.IsNullOrEmpty(blt) ? $"Backlight (Type: {blt})" : "Backlight";
+                }
+                return kv.Key;
+            }).ToList();
+
+        if (!string.IsNullOrWhiteSpace(txtCustomConfig.Text))
+            configLines.AddRange(txtCustomConfig.Text
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim()).Where(l => l.Length > 0));
+
+        var configRun = body.Descendants(w + "r")
+            .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Place components from here!");
+        if (configRun != null)
+        {
+            MakeBlackRun(configRun, configLines.Count > 0 ? configLines[0] : "");
+            for (int i = 1; i < configLines.Count; i++)
+            {
+                var extra = new XElement(w + "r",
+                    new XElement(w + "rPr",
+                        new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                        new XElement(w + "szCs", new XAttribute(w + "val", "22"))),
+                    new XElement(w + "br"),
+                    new XElement(w + "t",
+                        new XAttribute(XNamespace.Xml + "space", "preserve"), configLines[i]));
+                configRun.AddAfterSelf(extra);
+                configRun = extra;
+            }
+        }
+
+        // ── Section paragraph replacements ────────────────────────────────────
+        ReplaceMarkerParagraph("Start inserting PM questions",         _questions.Select(q => q.Text));
+        ReplaceMarkerParagraph("Start inserting marketing questions",  _marketingQuestions.Select(q => q.Text));
+        ReplaceMarkerParagraph("Start inserting marketing notes",      _marketingNotes.Select(n => n.Text));
+        ReplaceMarkerParagraph("Start inserting PM notes",            _pmNotes.Select(n => n.Text));
+
+        // ── Save ──────────────────────────────────────────────────────────────
+        var settings = new System.Xml.XmlWriterSettings
+        {
+            Encoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true),
+            Indent = false
+        };
+        using var writer = System.Xml.XmlWriter.Create(outputPath, settings);
+        doc.Save(writer);
+    }
+
+    private void GenerateWordDocument_PLACEHOLDER(string filePath)
+    {
+        using (WordprocessingDocument wordDoc = WordprocessingDocument.Create(filePath,
             WordprocessingDocumentType.Document))
         {
             MainDocumentPart mainPart = wordDoc.AddMainDocumentPart();
