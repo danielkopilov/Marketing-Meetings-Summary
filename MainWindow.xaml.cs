@@ -94,6 +94,7 @@ public partial class MainWindow : Window
     };
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
+    private readonly Dictionary<string, string> _componentNotes = new();
     private System.Windows.Controls.ComboBox? _bbTypeComboBox;
     private System.Windows.Controls.ComboBox? _bbSizeComboBox;
     private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
@@ -1066,7 +1067,7 @@ public partial class MainWindow : Window
             if (checkBox.Parent is WpfBorder ob) ob.Child = null;
             else if (checkBox.Parent is System.Windows.Controls.Panel op) op.Children.Remove(checkBox);
 
-            checkBox.Margin = new WpfThickness(0, 0, 0, 14);
+            checkBox.Margin = new WpfThickness(0);
             checkBox.FontSize = 14;
             checkBox.FontWeight = System.Windows.FontWeights.Normal;
             checkBox.Foreground = System.Windows.Media.Brushes.Black;
@@ -1074,9 +1075,12 @@ public partial class MainWindow : Window
             checkBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
             if (checkBox.Content is System.Windows.Controls.TextBlock cbtb) { cbtb.FontSize = 14; cbtb.FontWeight = System.Windows.FontWeights.Normal; }
 
-            System.Windows.Controls.Grid.SetRow(checkBox, radRowIdx);
-            System.Windows.Controls.Grid.SetColumn(checkBox, 0);
-            radiationGrid.Children.Add(checkBox);
+            var cbWrapper = WrapCheckBoxWithNoteButton(checkBox, item);
+            cbWrapper.Margin = new WpfThickness(0, 0, 0, 14);
+            cbWrapper.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+            System.Windows.Controls.Grid.SetRow(cbWrapper, radRowIdx);
+            System.Windows.Controls.Grid.SetColumn(cbWrapper, 0);
+            radiationGrid.Children.Add(cbWrapper);
 
             if (item == "B.B")
             {
@@ -1152,7 +1156,7 @@ public partial class MainWindow : Window
                 if (cb.Parent is WpfBorder ob2) ob2.Child = null;
                 else if (cb.Parent is System.Windows.Controls.Panel op2) op2.Children.Remove(cb);
 
-                cb.Margin = new WpfThickness(0, 10, 24, 14);
+                cb.Margin = new WpfThickness(0);
                 cb.FontSize = 14;
                 cb.FontWeight = System.Windows.FontWeights.Normal;
                 cb.Foreground = System.Windows.Media.Brushes.Black;
@@ -1160,11 +1164,15 @@ public partial class MainWindow : Window
                 cb.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
                 if (cb.Content is System.Windows.Controls.TextBlock stb) { stb.FontSize = 14; stb.FontWeight = System.Windows.FontWeights.Normal; }
 
-                System.Windows.Controls.Grid.SetRow(cb, radRowIdx);
-                System.Windows.Controls.Grid.SetColumn(cb, colOffset);
-                System.Windows.Controls.Grid.SetColumnSpan(cb, colOffset == 0 ? 1 : 4);
-                radiationGrid.Children.Add(cb);
-                colOffset = 1; // second item starts at col 1, spans remaining
+                var siWrapper = WrapCheckBoxWithNoteButton(cb, si);
+                siWrapper.Margin = new WpfThickness(0, 10, 24, 14);
+                siWrapper.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+                System.Windows.Controls.Grid.SetRow(siWrapper, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(siWrapper, colOffset);
+                // span 2 for LOS Laser (col 0) so the note icon isn't clipped; span 3 for QTH Lamp
+                System.Windows.Controls.Grid.SetColumnSpan(siWrapper, colOffset == 0 ? 2 : 3);
+                radiationGrid.Children.Add(siWrapper);
+                colOffset = 2; // QTH Lamp starts at col 2, spans remaining
             }
         }
 
@@ -1319,11 +1327,14 @@ public partial class MainWindow : Window
             var cb = _configCheckBoxes[top9[i]];
             DetachCheckBox(cb);
             StyleSysCheckBox(cb);
-            cb.Margin = new WpfThickness(0, 0, 0, 14);
+            cb.Margin = new WpfThickness(0, 0, 0, 0);
 
-            System.Windows.Controls.Grid.SetRow(cb, i / 3);
-            System.Windows.Controls.Grid.SetColumn(cb, top9GridCols[i % 3]);
-            componentsGrid.Children.Add(cb);
+            var cbw = WrapCheckBoxWithNoteButton(cb, top9[i]);
+            cbw.Margin = new WpfThickness(0, 0, 0, 14);
+
+            System.Windows.Controls.Grid.SetRow(cbw, i / 3);
+            System.Windows.Controls.Grid.SetColumn(cbw, top9GridCols[i % 3]);
+            componentsGrid.Children.Add(cbw);
         }
 
         // Dimmed style helpers for inline labels/units
@@ -1369,7 +1380,8 @@ public partial class MainWindow : Window
             var lblKG = DimLabel("[KG]"); lblKG.Margin = new WpfThickness(4, 0, 0, 0);
 
             var mwRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
-            mwRow.Children.Add(cbNP); mwRow.Children.Add(lblMW); mwRow.Children.Add(_maxWeightTextBox); mwRow.Children.Add(lblKG);
+            var cbNPWrapper = WrapCheckBoxWithNoteButton(cbNP, "NewPort Stage");
+            mwRow.Children.Add(cbNPWrapper); mwRow.Children.Add(lblMW); mwRow.Children.Add(_maxWeightTextBox); mwRow.Children.Add(lblKG);
             System.Windows.Controls.Grid.SetRow(mwRow, r); System.Windows.Controls.Grid.SetColumn(mwRow, 0); System.Windows.Controls.Grid.SetColumnSpan(mwRow, 4);
             componentsGrid.Children.Add(mwRow);
         }
@@ -1389,7 +1401,8 @@ public partial class MainWindow : Window
             var lblM = DimLabel("[m]"); lblM.Margin = new WpfThickness(4, 0, 0, 0);
 
             var fdRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
-            fdRow.Children.Add(cbFS); fdRow.Children.Add(lblFD); fdRow.Children.Add(_finiteDistance1TextBox); fdRow.Children.Add(lblM);
+            var cbFSWrapper = WrapCheckBoxWithNoteButton(cbFS, "Focus Stage");
+            fdRow.Children.Add(cbFSWrapper); fdRow.Children.Add(lblFD); fdRow.Children.Add(_finiteDistance1TextBox); fdRow.Children.Add(lblM);
             System.Windows.Controls.Grid.SetRow(fdRow, r); System.Windows.Controls.Grid.SetColumn(fdRow, 0); System.Windows.Controls.Grid.SetColumnSpan(fdRow, 4);
             componentsGrid.Children.Add(fdRow);
         }
@@ -1401,9 +1414,11 @@ public partial class MainWindow : Window
 
             var cbVRS = _configCheckBoxes["VRS"];
             DetachCheckBox(cbVRS); StyleSysCheckBox(cbVRS);
-            cbVRS.Margin = new WpfThickness(0, 0, 0, 14);
-            System.Windows.Controls.Grid.SetRow(cbVRS, r); System.Windows.Controls.Grid.SetColumn(cbVRS, 0);
-            componentsGrid.Children.Add(cbVRS);
+            cbVRS.Margin = new WpfThickness(0, 0, 0, 0);
+            var cbVRSWrapper = WrapCheckBoxWithNoteButton(cbVRS, "VRS");
+            cbVRSWrapper.Margin = new WpfThickness(0, 0, 0, 14);
+            System.Windows.Controls.Grid.SetRow(cbVRSWrapper, r); System.Windows.Controls.Grid.SetColumn(cbVRSWrapper, 0);
+            componentsGrid.Children.Add(cbVRSWrapper);
 
             _vrsComboBox1 = null;
             _vrsComboBox2 = null;
@@ -1424,7 +1439,8 @@ public partial class MainWindow : Window
             var lblInches = DimLabel("[Inches]"); lblInches.Margin = new WpfThickness(4, 0, 0, 0);
 
             var szRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
-            szRow.Children.Add(cbGimbal); szRow.Children.Add(lblSize); szRow.Children.Add(_gimbalSizeTextBox); szRow.Children.Add(lblInches);
+            var cbGimbalWrapper = WrapCheckBoxWithNoteButton(cbGimbal, "Gimbal");
+            szRow.Children.Add(cbGimbalWrapper); szRow.Children.Add(lblSize); szRow.Children.Add(_gimbalSizeTextBox); szRow.Children.Add(lblInches);
             System.Windows.Controls.Grid.SetRow(szRow, r); System.Windows.Controls.Grid.SetColumn(szRow, 0); System.Windows.Controls.Grid.SetColumnSpan(szRow, 4);
             componentsGrid.Children.Add(szRow);
         }
@@ -2329,6 +2345,230 @@ public partial class MainWindow : Window
         }
     }
 
+    // Creates a WPF Path that draws a speech bubble icon.
+    private static System.Windows.Shapes.Path MakeSpeechBubbleIcon(System.Windows.Media.Brush fill)
+    {
+        // A simple rounded speech bubble with a small tail at the bottom-left.
+        var geometry = System.Windows.Media.Geometry.Parse(
+            "M 1,1 Q 1,0 2,0 L 12,0 Q 13,0 13,1 L 13,8 Q 13,9 12,9 L 5,9 L 2,12 L 2,9 L 2,9 Q 1,9 1,8 Z");
+        return new System.Windows.Shapes.Path
+        {
+            Data = geometry,
+            Fill = fill,
+            Width = 14,
+            Height = 13,
+            Stretch = System.Windows.Media.Stretch.Uniform,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+    }
+
+    // Wraps a checkbox in a horizontal StackPanel together with a speech-bubble note button.
+    private System.Windows.Controls.StackPanel WrapCheckBoxWithNoteButton(WpfCheckBox checkBox, string itemKey)
+    {
+        var wrapper = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+
+        wrapper.Children.Add(checkBox);
+
+        bool hasNote = _componentNotes.TryGetValue(itemKey, out var existingNote) && !string.IsNullOrWhiteSpace(existingNote);
+        var iconFill = hasNote
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235))
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(160, 174, 192));
+
+        var noteBtn = new System.Windows.Controls.Button
+        {
+            Content = MakeSpeechBubbleIcon(iconFill),
+            Width = 22,
+            Height = 22,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderThickness = new WpfThickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Padding = new WpfThickness(0),
+            Margin = new WpfThickness(4, 0, 0, 0),
+            Tag = itemKey,
+            ToolTip = hasNote ? existingNote : "Add note"
+        };
+
+        var noteBtnTemplate = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+        var noteBorderFact = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        noteBorderFact.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        var noteContentFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+        noteContentFact.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+        noteContentFact.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        noteBorderFact.AppendChild(noteContentFact);
+        noteBtnTemplate.VisualTree = noteBorderFact;
+        noteBtn.Template = noteBtnTemplate;
+
+        noteBtn.Click += NoteButton_Click;
+        wrapper.Children.Add(noteBtn);
+
+        return wrapper;
+    }
+
+    private void NoteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button btn) return;
+        if (btn.Tag is not string itemKey) return;
+
+        // Build popup
+        var popup = new System.Windows.Controls.Primitives.Popup
+        {
+            PlacementTarget = btn,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            StaysOpen = false,
+            AllowsTransparency = true
+        };
+
+        // Outer border — light gray border, white background, rounded, with shadow (matches screenshot)
+        var popupBorder = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(180, 190, 205)),
+            BorderThickness = new WpfThickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new WpfThickness(0),
+            Width = 260,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                ShadowDepth = 2,
+                BlurRadius = 8,
+                Opacity = 0.18,
+                Color = System.Windows.Media.Color.FromRgb(0, 0, 0)
+            }
+        };
+
+        var outerStack = new System.Windows.Controls.StackPanel();
+
+        // Title bar — light blue-gray background with label (matches screenshot header)
+        var titleBar = new WpfBorder
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(220, 230, 242)),
+            Padding = new WpfThickness(10, 4, 10, 4),
+            CornerRadius = new CornerRadius(5, 5, 0, 0)
+        };
+        var titleText = new System.Windows.Controls.TextBlock
+        {
+            Text = $"Notes for {itemKey}",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(30, 41, 59))
+        };
+        titleBar.Child = titleText;
+        outerStack.Children.Add(titleBar);
+
+        // Body area
+        var bodyStack = new System.Windows.Controls.StackPanel
+        {
+            Margin = new WpfThickness(10, 8, 10, 6)
+        };
+
+        _componentNotes.TryGetValue(itemKey, out var currentNote);
+        var noteTextBox = new System.Windows.Controls.TextBox
+        {
+            Text = currentNote ?? "",
+            FontSize = 13,
+            FontWeight = System.Windows.FontWeights.Normal,
+            Height = 70,
+            Padding = new WpfThickness(6, 4, 6, 4),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(180, 190, 205)),
+            BorderThickness = new WpfThickness(1),
+            AcceptsReturn = true,
+            TextWrapping = System.Windows.TextWrapping.Wrap,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            Margin = new WpfThickness(0, 0, 0, 10)
+        };
+        ApplyRoundedTextBoxTemplate(noteTextBox);
+        bodyStack.Children.Add(noteTextBox);
+
+        // Buttons row — Save & Cancel aligned to the right
+        var buttonsRow = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+        };
+
+        // Helper: create a flat dialog button matching the screenshot style
+        System.Windows.Controls.Button MakeDialogButton(string label)
+        {
+            var b = new System.Windows.Controls.Button
+            {
+                Content = label,
+                FontSize = 12,
+                FontWeight = System.Windows.FontWeights.Normal,
+                Padding = new WpfThickness(14, 4, 14, 4),
+                Background = System.Windows.Media.Brushes.White,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(30, 41, 59)),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(180, 190, 205)),
+                BorderThickness = new WpfThickness(1),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+            var tmpl = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+            var bf = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+            bf.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+            bf.SetValue(WpfBorder.BorderBrushProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderBrushProperty));
+            bf.SetValue(WpfBorder.BorderThicknessProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderThicknessProperty));
+            bf.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(4));
+            var cf = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+            cf.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+            cf.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+            cf.SetValue(System.Windows.Controls.ContentPresenter.MarginProperty, new WpfThickness(0, -6, 0, 0));
+            bf.AppendChild(cf);
+            tmpl.VisualTree = bf;
+            b.Template = tmpl;
+            b.VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
+            return b;
+        }
+
+        var saveBtn   = MakeDialogButton("Save");
+        saveBtn.Width = 62;
+        saveBtn.Height = 26;
+        saveBtn.Padding = new WpfThickness(0, 0, 0, 0);
+        var cancelBtn = MakeDialogButton("Cancel");
+        cancelBtn.Width = 62;
+        cancelBtn.Height = 26;
+        cancelBtn.Padding = new WpfThickness(0, 0, 0, 0);
+        cancelBtn.Margin = new WpfThickness(6, 0, 0, 0);
+
+        saveBtn.Click += (s2, e2) =>
+        {
+            _componentNotes[itemKey] = noteTextBox.Text;
+            bool saved = !string.IsNullOrWhiteSpace(noteTextBox.Text);
+            btn.ToolTip = saved ? noteTextBox.Text : "Add note";
+            if (btn.Content is System.Windows.Shapes.Path iconPath)
+            {
+                iconPath.Fill = saved
+                    ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235))
+                    : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(160, 174, 192));
+            }
+            popup.IsOpen = false;
+        };
+
+        cancelBtn.Click += (s2, e2) => { popup.IsOpen = false; };
+
+        buttonsRow.Children.Add(saveBtn);
+        buttonsRow.Children.Add(cancelBtn);
+        bodyStack.Children.Add(buttonsRow);
+
+        outerStack.Children.Add(bodyStack);
+        popupBorder.Child = outerStack;
+        popup.Child = popupBorder;
+        popup.IsOpen = true;
+
+        noteTextBox.Focus();
+        noteTextBox.SelectAll();
+    }
+
     private void InitializeTargets()
     {
         // Targets will be initialized with 3 empty items in LoadTargetsSection
@@ -2693,6 +2933,125 @@ public partial class MainWindow : Window
             }
         }
 
+        // ── Configuration table — one row per checked component ──────────────
+        // Build list of (componentText, noteText) for every checked item
+        var configItems = _configCheckBoxes
+            .Where(kv => kv.Value.IsChecked == true)
+            .Select(kv =>
+            {
+                string component;
+                if (kv.Key == "B.B")
+                {
+                    var parts = new List<string>();
+                    var bt = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
+                    var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
+                    if (!string.IsNullOrEmpty(bt)) parts.Add($"Type: {bt}");
+                    if (!string.IsNullOrEmpty(bs)) parts.Add($"Size: {bs}");
+                    component = parts.Count > 0 ? $"B.B ({string.Join(", ", parts)})" : "B.B";
+                }
+                else if (kv.Key == "I.S")
+                {
+                    var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
+                    component = !string.IsNullOrEmpty(ap) ? $"I.S (Exit Aperture: {ap})" : "I.S";
+                }
+                else if (kv.Key == "Backlight")
+                {
+                    var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
+                    component = !string.IsNullOrEmpty(blt) ? $"Backlight (Type: {blt})" : "Backlight";
+                }
+                else
+                {
+                    component = kv.Key;
+                }
+                _componentNotes.TryGetValue(kv.Key, out var note);
+                return (component, note: note ?? "");
+            }).ToList();
+
+        // Add any custom config lines (no note)
+        if (!string.IsNullOrWhiteSpace(txtCustomConfig.Text))
+            configItems.AddRange(txtCustomConfig.Text
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim()).Where(l => l.Length > 0)
+                .Select(l => (component: l, note: "")));
+
+        // Helper: build a plain run with 11pt text
+        XElement MakeDataRun(string value) =>
+            new XElement(w + "r",
+                new XElement(w + "rPr",
+                    new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                    new XElement(w + "szCs", new XAttribute(w + "val", "22"))),
+                new XElement(w + "t",
+                    value.StartsWith(" ") || value.EndsWith(" ")
+                        ? new XAttribute(XNamespace.Xml + "space", "preserve") : null!,
+                    value));
+
+        // Helper: clone a table cell's tcPr (formatting) and return a fresh <w:tc>
+        XElement CloneCell(XElement sourceCell, string text)
+        {
+            var tcPr = sourceCell.Element(w + "tcPr");
+            var cell = new XElement(w + "tc");
+            if (tcPr != null) cell.Add(new XElement(tcPr));
+            var para = new XElement(w + "p",
+                new XElement(w + "pPr",
+                    new XElement(w + "rPr",
+                        new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                        new XElement(w + "szCs", new XAttribute(w + "val", "22")))));
+            if (!string.IsNullOrEmpty(text)) para.Add(MakeDataRun(text));
+            cell.Add(para);
+            return cell;
+        }
+
+        var configRun = body.Descendants(w + "r")
+            .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Place components from here!");
+        if (configRun != null)
+        {
+            var templateRow = configRun.Ancestors(w + "tr").First();
+            var cells = templateRow.Elements(w + "tc").ToList(); // [0]=Component, [1]=Notes
+
+            if (configItems.Count == 0)
+            {
+                MakeBlackRun(configRun, "");
+            }
+            else
+            {
+                // Fill the first (template) row
+                MakeBlackRun(configRun, configItems[0].component);
+
+                // Fill notes cell of first row
+                if (cells.Count >= 2)
+                {
+                    var notesPara = cells[1].Element(w + "p");
+                    notesPara?.Elements(w + "r").Remove();
+                    if (!string.IsNullOrWhiteSpace(configItems[0].note))
+                        notesPara?.Add(MakeDataRun(configItems[0].note));
+                }
+
+                // Add one new row per remaining component
+                var insertAfter = templateRow;
+                for (int i = 1; i < configItems.Count; i++)
+                {
+                    var newRow = new XElement(w + "tr");
+                    var trPr = templateRow.Element(w + "trPr");
+                    if (trPr != null) newRow.Add(new XElement(trPr));
+
+                    var compCell = cells.Count > 0
+                        ? CloneCell(cells[0], configItems[i].component)
+                        : new XElement(w + "tc", new XElement(w + "p", MakeDataRun(configItems[i].component)));
+
+                    var notesCell = cells.Count > 1
+                        ? CloneCell(cells[1], configItems[i].note)
+                        : new XElement(w + "tc", new XElement(w + "p",
+                            string.IsNullOrEmpty(configItems[i].note) ? null : MakeDataRun(configItems[i].note)));
+
+                    newRow.Add(compCell);
+                    newRow.Add(notesCell);
+
+                    insertAfter.AddAfterSelf(newRow);
+                    insertAfter = newRow;
+                }
+            }
+        }
+
         // Convert leftover lone red space / separator runs to black (they carry spacing between fields)
         foreach (var container in allContainers)
         foreach (var r in container.Descendants(w + "r").Where(r => IsRedRun(r)).ToList())
@@ -2703,57 +3062,6 @@ public partial class MainWindow : Window
                 rPr.Elements(w + "b").Remove();
                 rPr.Elements(w + "bCs").Remove();
                 rPr.Elements(w + "color").Remove();
-            }
-        }
-
-        // ── Configuration table cell ──────────────────────────────────────────
-        var configLines = _configCheckBoxes
-            .Where(kv => kv.Value.IsChecked == true)
-            .Select(kv =>
-            {
-                if (kv.Key == "B.B")
-                {
-                    var parts = new List<string>();
-                    var bt = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
-                    var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
-                    if (!string.IsNullOrEmpty(bt)) parts.Add($"Type: {bt}");
-                    if (!string.IsNullOrEmpty(bs)) parts.Add($"Size: {bs}");
-                    return parts.Count > 0 ? $"B.B ({string.Join(", ", parts)})" : "B.B";
-                }
-                if (kv.Key == "I.S")
-                {
-                    var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
-                    return !string.IsNullOrEmpty(ap) ? $"I.S (Exit Aperture: {ap})" : "I.S";
-                }
-                if (kv.Key == "Backlight")
-                {
-                    var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
-                    return !string.IsNullOrEmpty(blt) ? $"Backlight (Type: {blt})" : "Backlight";
-                }
-                return kv.Key;
-            }).ToList();
-
-        if (!string.IsNullOrWhiteSpace(txtCustomConfig.Text))
-            configLines.AddRange(txtCustomConfig.Text
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(l => l.Trim()).Where(l => l.Length > 0));
-
-        var configRun = body.Descendants(w + "r")
-            .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Place components from here!");
-        if (configRun != null)
-        {
-            MakeBlackRun(configRun, configLines.Count > 0 ? configLines[0] : "");
-            for (int i = 1; i < configLines.Count; i++)
-            {
-                var extra = new XElement(w + "r",
-                    new XElement(w + "rPr",
-                        new XElement(w + "sz",   new XAttribute(w + "val", "22")),
-                        new XElement(w + "szCs", new XAttribute(w + "val", "22"))),
-                    new XElement(w + "br"),
-                    new XElement(w + "t",
-                        new XAttribute(XNamespace.Xml + "space", "preserve"), configLines[i]));
-                configRun.AddAfterSelf(extra);
-                configRun = extra;
             }
         }
 
