@@ -61,10 +61,10 @@
             <Setter Property="Foreground" Value="#1E293B"/>
             <Setter Property="BorderBrush" Value="#D1D5DB"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="Normal"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Padding" Value="4,0,2,0"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="2,0,2,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="Template">
@@ -75,11 +75,11 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="6">
+                                    CornerRadius="0">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="16"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0"
                                                Text="{TemplateBinding SelectionBoxItem}"
@@ -89,7 +89,7 @@
                                                FontWeight="Normal"
                                                Foreground="{TemplateBinding Foreground}"
                                                VerticalAlignment="Center"
-                                               HorizontalAlignment="Center"
+                                               HorizontalAlignment="Left"
                                                IsHitTestVisible="False"/>
                                     <Path Grid.Column="1"
                                           Data="M 0 0 L 4 4 L 8 0 Z"
@@ -99,10 +99,15 @@
                                           Margin="0,1,2,0"/>
                                     <ToggleButton Grid.Column="0"
                                                   Grid.ColumnSpan="2"
-                                                  Background="Transparent"
                                                   BorderThickness="0"
                                                   IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
-                                                  Focusable="False"/>
+                                                  Focusable="False">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
                                 </Grid>
                             </Border>
                             <Popup x:Name="PART_Popup"
@@ -114,7 +119,7 @@
                                 <Border Background="White"
                                         BorderBrush="#D1D5DB"
                                         BorderThickness="1"
-                                        CornerRadius="6"
+                                        CornerRadius="0"
                                         Padding="2"
                                         MinWidth="{TemplateBinding ActualWidth}">
                                     <Border.Effect>

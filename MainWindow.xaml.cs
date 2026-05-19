@@ -109,11 +109,21 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _vrsComboBox3;
     private System.Windows.Controls.ComboBox? _vrsComboBox4;
     private System.Windows.Controls.TextBox? _gimbalSizeTextBox;
+    private System.Windows.Controls.TextBox? _gimbalLoadCapacityTextBox;
+    private WpfCheckBox? _gimbalJoystickCheckBox;
+    private System.Windows.Controls.ComboBox? _gimbalAccuracyComboBox;
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox;
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox2;
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox3;
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox4;
     private WpfCheckBox? _losHalogenCheckBox;
+    // Inline label references for enable/disable
+    private System.Windows.Controls.TextBlock? _lblBBType, _lblBBSize;
+    private System.Windows.Controls.TextBlock? _lblISAperture;
+    private System.Windows.Controls.TextBlock? _lblBacklightType;
+    private System.Windows.Controls.TextBlock? _lblMaxWeight, _lblKG;
+    private System.Windows.Controls.TextBlock? _lblFiniteDistance, _lblM;
+    private System.Windows.Controls.TextBlock? _lblGimbalSize, _lblInches, _lblLoadCapacity, _lblKGGimbal, _lblAccuracy;
     private readonly ObservableCollection<TargetItem> _targets = new();
     private readonly ObservableCollection<QuestionItem> _questions = new();
     private readonly ObservableCollection<QuestionItem> _marketingQuestions = new();
@@ -941,6 +951,27 @@ public partial class MainWindow : Window
 
     private void LoadConfigurationSection(System.Windows.Controls.Panel panel)
     {
+        // ── Save existing inline-control values before rebuilding the UI ──────
+        var savedBBType         = _bbTypeComboBox?.SelectedItem?.ToString();
+        var savedBBSize         = _bbSizeComboBox?.SelectedItem?.ToString();
+        var savedISAperture     = _isExitApertureComboBox?.SelectedItem?.ToString();
+        var savedBacklightType  = _backlightTypeComboBox?.SelectedItem?.ToString();
+        var savedMaxWeight      = _maxWeightTextBox?.Text;
+        var savedFiniteDist     = _finiteDistance1TextBox?.Text;
+        var savedVrs1           = _vrsComboBox1?.SelectedItem?.ToString();
+        var savedVrs2           = _vrsComboBox2?.SelectedItem?.ToString();
+        var savedVrs3           = _vrsComboBox3?.SelectedItem?.ToString();
+        var savedVrs4           = _vrsComboBox4?.SelectedItem?.ToString();
+        var savedGimbalSize     = _gimbalSizeTextBox?.Text;
+        var savedGimbalLC       = _gimbalLoadCapacityTextBox?.Text;
+        var savedGimbalAccuracy = _gimbalAccuracyComboBox?.SelectedItem?.ToString();
+        var savedGimbalJoystick = _gimbalJoystickCheckBox?.IsChecked ?? false;
+        var savedLosHalogen     = _losHalogenCheckBox?.IsChecked ?? false;
+        var savedFG1            = _frameGrabbersComboBox?.SelectedItem?.ToString();
+        var savedFG2            = _frameGrabbersComboBox2?.SelectedItem?.ToString();
+        var savedFG3            = _frameGrabbersComboBox3?.SelectedItem?.ToString();
+        var savedFG4            = _frameGrabbersComboBox4?.SelectedItem?.ToString();
+
         // Main Configuration Card - matching the image exactly
         var card = new WpfBorder
         {
@@ -1096,9 +1127,10 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl1, 1);
                 radiationGrid.Children.Add(lbl1);
+                _lblBBType = lbl1;
 
                 _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "SR200N-33");
-                _bbTypeComboBox.SelectedIndex = 0;
+                _bbTypeComboBox.SelectedIndex = -1;
                 var w1 = MakeComboWrapper(_bbTypeComboBox, 138);
                 w1.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
@@ -1110,6 +1142,7 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(lbl2, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl2, 3);
                 radiationGrid.Children.Add(lbl2);
+                _lblBBSize = lbl2;
 
                 _bbSizeComboBox = MakeWhiteComboBox(108, "1D", "2D", "4D", "8D", "12D");
                 var w2 = MakeComboWrapper(_bbSizeComboBox, 108);
@@ -1117,6 +1150,13 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(w2, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w2, 4);
                 radiationGrid.Children.Add(w2);
+
+                // Initially disabled
+                SetInlineEnabled(false, lbl1, lbl2);
+                _bbTypeComboBox.IsEnabled = false; _bbSizeComboBox.IsEnabled = false;
+                var bbCb = _configCheckBoxes["B.B"];
+                bbCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1, lbl2); _bbTypeComboBox.IsEnabled = true; _bbSizeComboBox.IsEnabled = true; };
+                bbCb.Unchecked += (s,e) => { SetInlineEnabled(false, lbl1, lbl2); _bbTypeComboBox.IsEnabled = false; _bbSizeComboBox.IsEnabled = false; };
             }
             else if (item == "I.S")
             {
@@ -1125,6 +1165,7 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl1, 1);
                 radiationGrid.Children.Add(lbl1);
+                _lblISAperture = lbl1;
 
                 _isExitApertureComboBox = MakeWhiteComboBox(138, "2\"", "3\"", "4\"", "5\"");
                 var w1 = MakeComboWrapper(_isExitApertureComboBox, 138);
@@ -1132,6 +1173,12 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w1, 2);
                 radiationGrid.Children.Add(w1);
+
+                SetInlineEnabled(false, lbl1);
+                _isExitApertureComboBox.IsEnabled = false;
+                var isCb = _configCheckBoxes["I.S"];
+                isCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1); _isExitApertureComboBox.IsEnabled = true; };
+                isCb.Unchecked += (s,e) => { SetInlineEnabled(false, lbl1); _isExitApertureComboBox.IsEnabled = false; };
             }
             else if (item == "Backlight")
             {
@@ -1140,6 +1187,7 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(lbl1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(lbl1, 1);
                 radiationGrid.Children.Add(lbl1);
+                _lblBacklightType = lbl1;
 
                 _backlightTypeComboBox = MakeWhiteComboBox(138, "LED", "Fiber Optic");
                 var w1 = MakeComboWrapper(_backlightTypeComboBox, 138);
@@ -1147,6 +1195,12 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w1, 2);
                 radiationGrid.Children.Add(w1);
+
+                SetInlineEnabled(false, lbl1);
+                _backlightTypeComboBox.IsEnabled = false;
+                var blCb = _configCheckBoxes["Backlight"];
+                blCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1); _backlightTypeComboBox.IsEnabled = true; };
+                blCb.Unchecked += (s,e) => { SetInlineEnabled(false, lbl1); _backlightTypeComboBox.IsEnabled = false; };
             }
 
             radRowIdx++;
@@ -1419,12 +1473,18 @@ public partial class MainWindow : Window
             var lblMW = DimLabel("Max Weight:"); lblMW.Margin = new WpfThickness(20, 0, 4, 0);
             _maxWeightTextBox = DimTextBox(55); _maxWeightTextBox.Margin = new WpfThickness(0);
             var lblKG = DimLabel("[KG]"); lblKG.Margin = new WpfThickness(4, 0, 0, 0);
+            _lblMaxWeight = lblMW; _lblKG = lblKG;
 
             var mwRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
             var cbNPWrapper = WrapCheckBoxWithNoteButton(cbNP, "NewPort Stage");
             mwRow.Children.Add(cbNPWrapper); mwRow.Children.Add(lblMW); mwRow.Children.Add(_maxWeightTextBox); mwRow.Children.Add(lblKG);
             System.Windows.Controls.Grid.SetRow(mwRow, r); System.Windows.Controls.Grid.SetColumn(mwRow, 0); System.Windows.Controls.Grid.SetColumnSpan(mwRow, 4);
             componentsGrid.Children.Add(mwRow);
+
+            SetInlineEnabled(false, lblMW, lblKG);
+            _maxWeightTextBox.IsEnabled = false;
+            cbNP.Checked   += (s, e) => { SetInlineEnabled(true,  lblMW, lblKG); _maxWeightTextBox.IsEnabled = true;  _maxWeightTextBox.Foreground = System.Windows.Media.Brushes.Black; };
+            cbNP.Unchecked += (s, e) => { SetInlineEnabled(false, lblMW, lblKG); _maxWeightTextBox.IsEnabled = false; _maxWeightTextBox.Foreground = _greyBrush; };
         }
 
         // ── Row 4: Focus Stage | Finite Distance: [___] [m] ──────────────────
@@ -1440,12 +1500,18 @@ public partial class MainWindow : Window
             _finiteDistance1TextBox = DimTextBox(55); _finiteDistance1TextBox.Margin = new WpfThickness(0);
             _finiteDistance2TextBox = null; _finiteDistance3TextBox = null;
             var lblM = DimLabel("[m]"); lblM.Margin = new WpfThickness(4, 0, 0, 0);
+            _lblFiniteDistance = lblFD; _lblM = lblM;
 
             var fdRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
             var cbFSWrapper = WrapCheckBoxWithNoteButton(cbFS, "Focus Stage");
             fdRow.Children.Add(cbFSWrapper); fdRow.Children.Add(lblFD); fdRow.Children.Add(_finiteDistance1TextBox); fdRow.Children.Add(lblM);
             System.Windows.Controls.Grid.SetRow(fdRow, r); System.Windows.Controls.Grid.SetColumn(fdRow, 0); System.Windows.Controls.Grid.SetColumnSpan(fdRow, 4);
             componentsGrid.Children.Add(fdRow);
+
+            SetInlineEnabled(false, lblFD, lblM);
+            _finiteDistance1TextBox.IsEnabled = false;
+            cbFS.Checked   += (s, e) => { SetInlineEnabled(true,  lblFD, lblM); _finiteDistance1TextBox.IsEnabled = true;  _finiteDistance1TextBox.Foreground = System.Windows.Media.Brushes.Black; };
+            cbFS.Unchecked += (s, e) => { SetInlineEnabled(false, lblFD, lblM); _finiteDistance1TextBox.IsEnabled = false; _finiteDistance1TextBox.Foreground = _greyBrush; };
         }
 
         // ── Row 5: VRS | 4 wavelength dropdowns ──────────────────────────────
@@ -1475,9 +1541,14 @@ public partial class MainWindow : Window
             vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox4, 110));
             System.Windows.Controls.Grid.SetRow(vrsRow, r); System.Windows.Controls.Grid.SetColumn(vrsRow, 0); System.Windows.Controls.Grid.SetColumnSpan(vrsRow, 4);
             componentsGrid.Children.Add(vrsRow);
+
+            _vrsComboBox1.IsEnabled = false; _vrsComboBox2.IsEnabled = false;
+            _vrsComboBox3.IsEnabled = false; _vrsComboBox4.IsEnabled = false;
+            cbVRS.Checked   += (s, e) => { _vrsComboBox1.IsEnabled = true;  _vrsComboBox2.IsEnabled = true;  _vrsComboBox3.IsEnabled = true;  _vrsComboBox4.IsEnabled = true; };
+            cbVRS.Unchecked += (s, e) => { _vrsComboBox1.IsEnabled = false; _vrsComboBox2.IsEnabled = false; _vrsComboBox3.IsEnabled = false; _vrsComboBox4.IsEnabled = false; };
         }
 
-        // ── Row 6: Gimbal | Size: [___] [Inches] ──────────────────────────────
+        // ── Row 6: Gimbal | +Joystick | Size:[__][Inches] | Load Capacity:[__][KG] | Accuracy:[v] ──
         {
             componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
             int r = 6;
@@ -1486,15 +1557,63 @@ public partial class MainWindow : Window
             DetachCheckBox(cbGimbal); StyleSysCheckBox(cbGimbal);
             cbGimbal.Margin = new WpfThickness(0, 0, 0, 0);
 
-            var lblSize = DimLabel("Size:"); lblSize.Margin = new WpfThickness(20, 0, 4, 0);
+            // +Joystick small checkbox (right after note icon, same style as +Halogen)
+            _gimbalJoystickCheckBox = new WpfCheckBox
+            {
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = "+Joystick",
+                    FontSize = 11,
+                    FontWeight = System.Windows.FontWeights.Normal,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    Margin = new WpfThickness(2, 0, 0, 0)
+                },
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(8, 0, 0, 0),
+                Padding = new WpfThickness(0),
+                LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+            };
+
+            // Size: [__] [Inches]
+            var lblSize = DimLabel("Size:"); lblSize.Margin = new WpfThickness(16, 0, 4, 0);
             _gimbalSizeTextBox = DimTextBox(55); _gimbalSizeTextBox.Margin = new WpfThickness(0);
             var lblInches = DimLabel("[Inches]"); lblInches.Margin = new WpfThickness(4, 0, 0, 0);
+            _lblGimbalSize = lblSize; _lblInches = lblInches;
+
+            // Load Capacity: [__] [KG]
+            var lblLC = DimLabel("Load Capacity:"); lblLC.Margin = new WpfThickness(16, 0, 4, 0);
+            _gimbalLoadCapacityTextBox = DimTextBox(55); _gimbalLoadCapacityTextBox.Margin = new WpfThickness(0);
+            var lblKGG = DimLabel("[KG]"); lblKGG.Margin = new WpfThickness(4, 0, 0, 0);
+            _lblLoadCapacity = lblLC; _lblKGGimbal = lblKGG;
+
+            // Accuracy: [v]
+            var lblAcc = DimLabel("Accuracy:"); lblAcc.Margin = new WpfThickness(16, 0, 4, 0);
+            _lblAccuracy = lblAcc;
+            _gimbalAccuracyComboBox = MakeWhiteComboBox(148, "Standard Accuracy", "High Accuracy");
+            _gimbalAccuracyComboBox.SelectedIndex = -1;
 
             var szRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
             var cbGimbalWrapper = WrapCheckBoxWithNoteButton(cbGimbal, "Gimbal");
-            szRow.Children.Add(cbGimbalWrapper); szRow.Children.Add(lblSize); szRow.Children.Add(_gimbalSizeTextBox); szRow.Children.Add(lblInches);
+            szRow.Children.Add(cbGimbalWrapper);
+            szRow.Children.Add(_gimbalJoystickCheckBox);
+            szRow.Children.Add(lblSize);
+            szRow.Children.Add(_gimbalSizeTextBox);
+            szRow.Children.Add(lblInches);
+            szRow.Children.Add(lblLC);
+            szRow.Children.Add(_gimbalLoadCapacityTextBox);
+            szRow.Children.Add(lblKGG);
+            szRow.Children.Add(lblAcc);
+            szRow.Children.Add(MakeComboWrapper(_gimbalAccuracyComboBox, 148));
             System.Windows.Controls.Grid.SetRow(szRow, r); System.Windows.Controls.Grid.SetColumn(szRow, 0); System.Windows.Controls.Grid.SetColumnSpan(szRow, 4);
             componentsGrid.Children.Add(szRow);
+
+            SetInlineEnabled(false, lblSize, lblInches, lblLC, lblKGG, lblAcc);
+            _gimbalSizeTextBox.IsEnabled = false;
+            _gimbalLoadCapacityTextBox.IsEnabled = false;
+            _gimbalJoystickCheckBox.IsEnabled = false;
+            _gimbalAccuracyComboBox.IsEnabled = false;
+            cbGimbal.Checked   += (s, e) => { SetInlineEnabled(true,  lblSize, lblInches, lblLC, lblKGG, lblAcc); _gimbalSizeTextBox.IsEnabled = true;  _gimbalSizeTextBox.Foreground = System.Windows.Media.Brushes.Black; _gimbalLoadCapacityTextBox.IsEnabled = true; _gimbalLoadCapacityTextBox.Foreground = System.Windows.Media.Brushes.Black; _gimbalJoystickCheckBox.IsEnabled = true; _gimbalAccuracyComboBox.IsEnabled = true; };
+            cbGimbal.Unchecked += (s, e) => { SetInlineEnabled(false, lblSize, lblInches, lblLC, lblKGG, lblAcc); _gimbalSizeTextBox.IsEnabled = false; _gimbalSizeTextBox.Foreground = _greyBrush; _gimbalLoadCapacityTextBox.IsEnabled = false; _gimbalLoadCapacityTextBox.Foreground = _greyBrush; _gimbalJoystickCheckBox.IsEnabled = false; _gimbalAccuracyComboBox.IsEnabled = false; };
         }
 
         // ── Row 7: Frame Grabbers | up to 4 dropdowns ────────────────────────
@@ -1524,11 +1643,40 @@ public partial class MainWindow : Window
             fgRow.Children.Add(MakeComboWrapper(_frameGrabbersComboBox4, 120));
             System.Windows.Controls.Grid.SetRow(fgRow, r); System.Windows.Controls.Grid.SetColumn(fgRow, 0); System.Windows.Controls.Grid.SetColumnSpan(fgRow, 4);
             componentsGrid.Children.Add(fgRow);
+
+            _frameGrabbersComboBox.IsEnabled  = false; _frameGrabbersComboBox2.IsEnabled = false;
+            _frameGrabbersComboBox3.IsEnabled = false; _frameGrabbersComboBox4.IsEnabled = false;
+            cbFG.Checked   += (s, e) => { _frameGrabbersComboBox.IsEnabled  = true;  _frameGrabbersComboBox2.IsEnabled = true;  _frameGrabbersComboBox3.IsEnabled = true;  _frameGrabbersComboBox4.IsEnabled = true; };
+            cbFG.Unchecked += (s, e) => { _frameGrabbersComboBox.IsEnabled  = false; _frameGrabbersComboBox2.IsEnabled = false; _frameGrabbersComboBox3.IsEnabled = false; _frameGrabbersComboBox4.IsEnabled = false; };
         }
 
         systemOptionsContainer.Child = componentsGrid;
         systemComponentsPanel.Children.Add(systemOptionsContainer);
         stackPanel.Children.Add(systemComponentsSection);
+
+        // ── Restore saved inline-control values and sync enabled state ────────
+        RestoreComboSelection(_bbTypeComboBox,         savedBBType);
+        RestoreComboSelection(_bbSizeComboBox,         savedBBSize);
+        RestoreComboSelection(_isExitApertureComboBox, savedISAperture);
+        RestoreComboSelection(_backlightTypeComboBox,  savedBacklightType);
+        if (_maxWeightTextBox      != null && savedMaxWeight   != null) _maxWeightTextBox.Text      = savedMaxWeight;
+        if (_finiteDistance1TextBox != null && savedFiniteDist  != null) _finiteDistance1TextBox.Text = savedFiniteDist;
+        RestoreComboSelection(_vrsComboBox1, savedVrs1);
+        RestoreComboSelection(_vrsComboBox2, savedVrs2);
+        RestoreComboSelection(_vrsComboBox3, savedVrs3);
+        RestoreComboSelection(_vrsComboBox4, savedVrs4);
+        if (_gimbalSizeTextBox          != null && savedGimbalSize != null) _gimbalSizeTextBox.Text           = savedGimbalSize;
+        if (_gimbalLoadCapacityTextBox  != null && savedGimbalLC   != null) _gimbalLoadCapacityTextBox.Text   = savedGimbalLC;
+        RestoreComboSelection(_gimbalAccuracyComboBox, savedGimbalAccuracy);
+        if (_gimbalJoystickCheckBox != null) _gimbalJoystickCheckBox.IsChecked = savedGimbalJoystick;
+        if (_losHalogenCheckBox     != null) _losHalogenCheckBox.IsChecked     = savedLosHalogen;
+        RestoreComboSelection(_frameGrabbersComboBox,  savedFG1);
+        RestoreComboSelection(_frameGrabbersComboBox2, savedFG2);
+        RestoreComboSelection(_frameGrabbersComboBox3, savedFG3);
+        RestoreComboSelection(_frameGrabbersComboBox4, savedFG4);
+
+        // Sync enabled state for all inline controls to match current checkbox states
+        SyncInlineControlStates();
 
         panel.Children.Add(card);
     }
@@ -1978,6 +2126,77 @@ public partial class MainWindow : Window
                 num++;
             }
         }
+    }
+
+    private static readonly System.Windows.Media.SolidColorBrush _greyBrush =
+        new(System.Windows.Media.Color.FromRgb(160, 160, 160));
+
+    private static void SetInlineEnabled(bool enabled, params System.Windows.Controls.TextBlock[] labels)
+    {
+        var color = enabled
+            ? System.Windows.Media.Brushes.Black
+            : _greyBrush;
+        foreach (var l in labels) l.Foreground = color;
+    }
+
+    private static void RestoreComboSelection(System.Windows.Controls.ComboBox? combo, string? value)
+    {
+        if (combo == null || value == null) return;
+        for (int i = 0; i < combo.Items.Count; i++)
+        {
+            if (combo.Items[i]?.ToString() == value)
+            {
+                combo.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// After rebuilding the configuration UI, re-apply enabled/foreground state
+    /// to all inline controls based on the current checkbox states.
+    /// </summary>
+    private void SyncInlineControlStates()
+    {
+        bool bb = _configCheckBoxes.TryGetValue("B.B", out var bbCb) && bbCb.IsChecked == true;
+        SetInlineEnabled(bb, _lblBBType!, _lblBBSize!);
+        if (_bbTypeComboBox  != null) _bbTypeComboBox.IsEnabled  = bb;
+        if (_bbSizeComboBox  != null) _bbSizeComboBox.IsEnabled  = bb;
+
+        bool isS = _configCheckBoxes.TryGetValue("I.S", out var isCb) && isCb.IsChecked == true;
+        SetInlineEnabled(isS, _lblISAperture!);
+        if (_isExitApertureComboBox != null) _isExitApertureComboBox.IsEnabled = isS;
+
+        bool bl = _configCheckBoxes.TryGetValue("Backlight", out var blCb) && blCb.IsChecked == true;
+        SetInlineEnabled(bl, _lblBacklightType!);
+        if (_backlightTypeComboBox != null) _backlightTypeComboBox.IsEnabled = bl;
+
+        bool np = _configCheckBoxes.TryGetValue("NewPort Stage", out var npCb) && npCb.IsChecked == true;
+        SetInlineEnabled(np, _lblMaxWeight!, _lblKG!);
+        if (_maxWeightTextBox != null) { _maxWeightTextBox.IsEnabled = np; _maxWeightTextBox.Foreground = np ? System.Windows.Media.Brushes.Black : _greyBrush; }
+
+        bool fs = _configCheckBoxes.TryGetValue("Focus Stage", out var fsCb) && fsCb.IsChecked == true;
+        SetInlineEnabled(fs, _lblFiniteDistance!, _lblM!);
+        if (_finiteDistance1TextBox != null) { _finiteDistance1TextBox.IsEnabled = fs; _finiteDistance1TextBox.Foreground = fs ? System.Windows.Media.Brushes.Black : _greyBrush; }
+
+        bool vrs = _configCheckBoxes.TryGetValue("VRS", out var vrsCb) && vrsCb.IsChecked == true;
+        if (_vrsComboBox1 != null) _vrsComboBox1.IsEnabled = vrs;
+        if (_vrsComboBox2 != null) _vrsComboBox2.IsEnabled = vrs;
+        if (_vrsComboBox3 != null) _vrsComboBox3.IsEnabled = vrs;
+        if (_vrsComboBox4 != null) _vrsComboBox4.IsEnabled = vrs;
+
+        bool gim = _configCheckBoxes.TryGetValue("Gimbal", out var gimCb) && gimCb.IsChecked == true;
+        SetInlineEnabled(gim, _lblGimbalSize!, _lblInches!, _lblLoadCapacity!, _lblKGGimbal!, _lblAccuracy!);
+        if (_gimbalSizeTextBox         != null) { _gimbalSizeTextBox.IsEnabled         = gim; _gimbalSizeTextBox.Foreground         = gim ? System.Windows.Media.Brushes.Black : _greyBrush; }
+        if (_gimbalLoadCapacityTextBox != null) { _gimbalLoadCapacityTextBox.IsEnabled = gim; _gimbalLoadCapacityTextBox.Foreground = gim ? System.Windows.Media.Brushes.Black : _greyBrush; }
+        if (_gimbalJoystickCheckBox    != null) _gimbalJoystickCheckBox.IsEnabled      = gim;
+        if (_gimbalAccuracyComboBox    != null) _gimbalAccuracyComboBox.IsEnabled      = gim;
+
+        bool fg = _configCheckBoxes.TryGetValue("Frame Grabbers", out var fgCb) && fgCb.IsChecked == true;
+        if (_frameGrabbersComboBox  != null) _frameGrabbersComboBox.IsEnabled  = fg;
+        if (_frameGrabbersComboBox2 != null) _frameGrabbersComboBox2.IsEnabled = fg;
+        if (_frameGrabbersComboBox3 != null) _frameGrabbersComboBox3.IsEnabled = fg;
+        if (_frameGrabbersComboBox4 != null) _frameGrabbersComboBox4.IsEnabled = fg;
     }
 
     private System.Windows.Controls.TextBlock MakeComboLabel(string text) =>
@@ -3050,6 +3269,18 @@ public partial class MainWindow : Window
                     }
                     component = fgParts.Count > 0 ? $"Frame Grabbers ({string.Join(", ", fgParts)})" : "Frame Grabbers";
                 }
+                else if (kv.Key == "Gimbal")
+                {
+                    var parts = new List<string>();
+                    var sz = _gimbalSizeTextBox?.Text.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(sz)) parts.Add($"Size: {sz} Inches");
+                    if (_gimbalJoystickCheckBox?.IsChecked == true) parts.Add("+Joystick");
+                    var lc = _gimbalLoadCapacityTextBox?.Text.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(lc)) parts.Add($"Load Capacity: {lc} KG");
+                    var acc = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "";
+                    if (!string.IsNullOrEmpty(acc)) parts.Add($"Accuracy: {acc}");
+                    component = parts.Count > 0 ? $"Gimbal ({string.Join(", ", parts)})" : "Gimbal";
+                }
                 else if (kv.Key == "LOS alignment target")
                 {
                     component = (_losHalogenCheckBox?.IsChecked == true)
@@ -3092,8 +3323,38 @@ public partial class MainWindow : Window
                         ? new XAttribute(XNamespace.Xml + "space", "preserve") : null!,
                     value));
 
-        // Helper: clone a table cell's tcPr (formatting) and return a fresh <w:tc>
-        XElement CloneCell(XElement sourceCell, string text)
+        // Helper: build a bold run with 11pt text
+        XElement MakeBoldDataRun(string value) =>
+            new XElement(w + "r",
+                new XElement(w + "rPr",
+                    new XElement(w + "b"),
+                    new XElement(w + "bCs"),
+                    new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                    new XElement(w + "szCs", new XAttribute(w + "val", "22"))),
+                new XElement(w + "t",
+                    value.StartsWith(" ") || value.EndsWith(" ")
+                        ? new XAttribute(XNamespace.Xml + "space", "preserve") : null!,
+                    value));
+
+        // Helper: add bold-name + regular-options runs into a paragraph element.
+        // Splits "Name (options)" → bold "Name" + regular " (options)".
+        // If no parenthesis, the whole text is bold.
+        void AddComponentRuns(XElement para, string component)
+        {
+            int paren = component.IndexOf('(');
+            if (paren > 0)
+            {
+                para.Add(MakeBoldDataRun(component[..paren].TrimEnd()));
+                para.Add(MakeDataRun(" " + component[paren..]));
+            }
+            else
+            {
+                para.Add(MakeBoldDataRun(component));
+            }
+        }
+
+        // Helper: clone a table cell's tcPr and fill it with plain (non-bold) text — used for Notes column
+        XElement CloneNoteCell(XElement sourceCell, string text)
         {
             var tcPr = sourceCell.Element(w + "tcPr");
             var cell = new XElement(w + "tc");
@@ -3104,6 +3365,22 @@ public partial class MainWindow : Window
                         new XElement(w + "sz",   new XAttribute(w + "val", "22")),
                         new XElement(w + "szCs", new XAttribute(w + "val", "22")))));
             if (!string.IsNullOrEmpty(text)) para.Add(MakeDataRun(text));
+            cell.Add(para);
+            return cell;
+        }
+
+        // Helper: clone a table cell's tcPr and fill it with bold-name + regular-options runs — used for Component column
+        XElement CloneCell(XElement sourceCell, string text)
+        {
+            var tcPr = sourceCell.Element(w + "tcPr");
+            var cell = new XElement(w + "tc");
+            if (tcPr != null) cell.Add(new XElement(tcPr));
+            var para = new XElement(w + "p",
+                new XElement(w + "pPr",
+                    new XElement(w + "rPr",
+                        new XElement(w + "sz",   new XAttribute(w + "val", "22")),
+                        new XElement(w + "szCs", new XAttribute(w + "val", "22")))));
+            if (!string.IsNullOrEmpty(text)) AddComponentRuns(para, text);
             cell.Add(para);
             return cell;
         }
@@ -3121,14 +3398,22 @@ public partial class MainWindow : Window
             }
             else
             {
-                // Fill the first (template) row
-                MakeBlackRun(configRun, configItems[0].component);
+                // Fill the first (template) row — replace the red placeholder run with
+                // bold component name + regular options in the same paragraph
+                var firstComp = configItems[0].component;
+                var configPara = configRun.Parent; // <w:p>
+                configPara?.Elements(w + "r").Remove();
+                if (configPara != null) AddComponentRuns(configPara, firstComp);
 
                 // Fill notes cell of first row
                 if (cells.Count >= 2)
                 {
                     var notesPara = cells[1].Element(w + "p");
                     notesPara?.Elements(w + "r").Remove();
+                    // Ensure paragraph rPr has no bold
+                    var notesPPr = notesPara?.Element(w + "pPr");
+                    notesPPr?.Element(w + "rPr")?.Elements(w + "b").Remove();
+                    notesPPr?.Element(w + "rPr")?.Elements(w + "bCs").Remove();
                     if (!string.IsNullOrWhiteSpace(configItems[0].note))
                         notesPara?.Add(MakeDataRun(configItems[0].note));
                 }
@@ -3141,12 +3426,18 @@ public partial class MainWindow : Window
                     var trPr = templateRow.Element(w + "trPr");
                     if (trPr != null) newRow.Add(new XElement(trPr));
 
+                    XElement BuildFallbackCompCell()
+                    {
+                        var p = new XElement(w + "p");
+                        AddComponentRuns(p, configItems[i].component);
+                        return new XElement(w + "tc", p);
+                    }
                     var compCell = cells.Count > 0
                         ? CloneCell(cells[0], configItems[i].component)
-                        : new XElement(w + "tc", new XElement(w + "p", MakeDataRun(configItems[i].component)));
+                        : BuildFallbackCompCell();
 
                     var notesCell = cells.Count > 1
-                        ? CloneCell(cells[1], configItems[i].note)
+                        ? CloneNoteCell(cells[1], configItems[i].note)
                         : new XElement(w + "tc", new XElement(w + "p",
                             string.IsNullOrEmpty(configItems[i].note) ? null : MakeDataRun(configItems[i].note)));
 
@@ -3254,6 +3545,18 @@ public partial class MainWindow : Window
                             if (!string.IsNullOrEmpty(v)) fgParts.Add(v);
                         }
                         return fgParts.Count > 0 ? $"Frame Grabbers ({string.Join(", ", fgParts)})" : "Frame Grabbers";
+                    }
+                    if (kv.Key == "Gimbal")
+                    {
+                        var parts = new List<string>();
+                        var sz = _gimbalSizeTextBox?.Text.Trim() ?? "";
+                        if (!string.IsNullOrEmpty(sz)) parts.Add($"Size: {sz} Inches");
+                        if (_gimbalJoystickCheckBox?.IsChecked == true) parts.Add("+Joystick");
+                        var lc = _gimbalLoadCapacityTextBox?.Text.Trim() ?? "";
+                        if (!string.IsNullOrEmpty(lc)) parts.Add($"Load Capacity: {lc} KG");
+                        var acc = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(acc)) parts.Add($"Accuracy: {acc}");
+                        return parts.Count > 0 ? $"Gimbal ({string.Join(", ", parts)})" : "Gimbal";
                     }
                     if (kv.Key == "LOS alignment target")
                         return (_losHalogenCheckBox?.IsChecked == true)
