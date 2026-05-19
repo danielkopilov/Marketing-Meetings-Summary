@@ -90,7 +90,8 @@ public partial class MainWindow : Window
         "NewPort Stage",
         "Focus Stage",
         "VRS",
-        "Gimbal"
+        "Gimbal",
+        "Frame Grabbers"
     };
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
@@ -106,7 +107,13 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _vrsComboBox1;
     private System.Windows.Controls.ComboBox? _vrsComboBox2;
     private System.Windows.Controls.ComboBox? _vrsComboBox3;
+    private System.Windows.Controls.ComboBox? _vrsComboBox4;
     private System.Windows.Controls.TextBox? _gimbalSizeTextBox;
+    private System.Windows.Controls.ComboBox? _frameGrabbersComboBox;
+    private System.Windows.Controls.ComboBox? _frameGrabbersComboBox2;
+    private System.Windows.Controls.ComboBox? _frameGrabbersComboBox3;
+    private System.Windows.Controls.ComboBox? _frameGrabbersComboBox4;
+    private WpfCheckBox? _losHalogenCheckBox;
     private readonly ObservableCollection<TargetItem> _targets = new();
     private readonly ObservableCollection<QuestionItem> _questions = new();
     private readonly ObservableCollection<QuestionItem> _marketingQuestions = new();
@@ -1330,11 +1337,45 @@ public partial class MainWindow : Window
             cb.Margin = new WpfThickness(0, 0, 0, 0);
 
             var cbw = WrapCheckBoxWithNoteButton(cb, top9[i]);
-            cbw.Margin = new WpfThickness(0, 0, 0, 14);
 
-            System.Windows.Controls.Grid.SetRow(cbw, i / 3);
-            System.Windows.Controls.Grid.SetColumn(cbw, top9GridCols[i % 3]);
-            componentsGrid.Children.Add(cbw);
+            if (top9[i] == "LOS alignment target")
+            {
+                // Wrap the note-button wrapper + Halogen checkbox in a horizontal StackPanel
+                _losHalogenCheckBox = new WpfCheckBox
+                {
+                    Content = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "+Halogen",
+                        FontSize = 11,
+                        FontWeight = System.Windows.FontWeights.Normal,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        Margin = new WpfThickness(2, 0, 0, 0)
+                    },
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(6, 0, 0, 0),
+                    Padding = new WpfThickness(0),
+                    LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+                };
+                var losRow = new System.Windows.Controls.StackPanel
+                {
+                    Orientation = System.Windows.Controls.Orientation.Horizontal,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(0, 0, 0, 14)
+                };
+                losRow.Children.Add(cbw);
+                losRow.Children.Add(_losHalogenCheckBox);
+                System.Windows.Controls.Grid.SetRow(losRow, i / 3);
+                System.Windows.Controls.Grid.SetColumn(losRow, top9GridCols[i % 3]);
+                System.Windows.Controls.Grid.SetColumnSpan(losRow, 2);
+                componentsGrid.Children.Add(losRow);
+            }
+            else
+            {
+                cbw.Margin = new WpfThickness(0, 0, 0, 14);
+                System.Windows.Controls.Grid.SetRow(cbw, i / 3);
+                System.Windows.Controls.Grid.SetColumn(cbw, top9GridCols[i % 3]);
+                componentsGrid.Children.Add(cbw);
+            }
         }
 
         // Dimmed style helpers for inline labels/units
@@ -1407,7 +1448,7 @@ public partial class MainWindow : Window
             componentsGrid.Children.Add(fdRow);
         }
 
-        // ── Row 5: VRS (checkbox only) ────────────────────────────────────────
+        // ── Row 5: VRS | 4 wavelength dropdowns ──────────────────────────────
         {
             componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
             int r = 5;
@@ -1416,13 +1457,24 @@ public partial class MainWindow : Window
             DetachCheckBox(cbVRS); StyleSysCheckBox(cbVRS);
             cbVRS.Margin = new WpfThickness(0, 0, 0, 0);
             var cbVRSWrapper = WrapCheckBoxWithNoteButton(cbVRS, "VRS");
-            cbVRSWrapper.Margin = new WpfThickness(0, 0, 0, 14);
-            System.Windows.Controls.Grid.SetRow(cbVRSWrapper, r); System.Windows.Controls.Grid.SetColumn(cbVRSWrapper, 0);
-            componentsGrid.Children.Add(cbVRSWrapper);
 
-            _vrsComboBox1 = null;
-            _vrsComboBox2 = null;
-            _vrsComboBox3 = null;
+            string[] vrsOptions = { "NA", "1550 [nm]", "1570 [nm]", "1064 [nm]", "1540 [nm]" };
+            _vrsComboBox1 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox1.SelectedIndex = 0;
+            _vrsComboBox2 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox2.SelectedIndex = 0;
+            _vrsComboBox3 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox3.SelectedIndex = 0;
+            _vrsComboBox4 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox4.SelectedIndex = 0;
+            _vrsComboBox2.Margin = new WpfThickness(6, 0, 0, 0);
+            _vrsComboBox3.Margin = new WpfThickness(6, 0, 0, 0);
+            _vrsComboBox4.Margin = new WpfThickness(6, 0, 0, 0);
+
+            var vrsRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            vrsRow.Children.Add(cbVRSWrapper);
+            vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox1, 110));
+            vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox2, 110));
+            vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox3, 110));
+            vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox4, 110));
+            System.Windows.Controls.Grid.SetRow(vrsRow, r); System.Windows.Controls.Grid.SetColumn(vrsRow, 0); System.Windows.Controls.Grid.SetColumnSpan(vrsRow, 4);
+            componentsGrid.Children.Add(vrsRow);
         }
 
         // ── Row 6: Gimbal | Size: [___] [Inches] ──────────────────────────────
@@ -1443,6 +1495,35 @@ public partial class MainWindow : Window
             szRow.Children.Add(cbGimbalWrapper); szRow.Children.Add(lblSize); szRow.Children.Add(_gimbalSizeTextBox); szRow.Children.Add(lblInches);
             System.Windows.Controls.Grid.SetRow(szRow, r); System.Windows.Controls.Grid.SetColumn(szRow, 0); System.Windows.Controls.Grid.SetColumnSpan(szRow, 4);
             componentsGrid.Children.Add(szRow);
+        }
+
+        // ── Row 7: Frame Grabbers | up to 4 dropdowns ────────────────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 7;
+
+            var cbFG = _configCheckBoxes["Frame Grabbers"];
+            DetachCheckBox(cbFG); StyleSysCheckBox(cbFG);
+            cbFG.Margin = new WpfThickness(0, 0, 0, 0);
+
+            string[] fgOptions = { "Analog", "Camera Link", "GigE Vision", "CoaxPress", "HD-SDI" };
+            _frameGrabbersComboBox  = MakeWhiteComboBox(120, fgOptions);
+            _frameGrabbersComboBox2 = MakeWhiteComboBox(120, fgOptions);
+            _frameGrabbersComboBox3 = MakeWhiteComboBox(120, fgOptions);
+            _frameGrabbersComboBox4 = MakeWhiteComboBox(120, fgOptions);
+
+            var fgRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            var cbFGWrapper = WrapCheckBoxWithNoteButton(cbFG, "Frame Grabbers");
+            fgRow.Children.Add(cbFGWrapper);
+            fgRow.Children.Add(MakeComboWrapper(_frameGrabbersComboBox,  120));
+            _frameGrabbersComboBox2.Margin = new WpfThickness(6, 0, 0, 0);
+            fgRow.Children.Add(MakeComboWrapper(_frameGrabbersComboBox2, 120));
+            _frameGrabbersComboBox3.Margin = new WpfThickness(6, 0, 0, 0);
+            fgRow.Children.Add(MakeComboWrapper(_frameGrabbersComboBox3, 120));
+            _frameGrabbersComboBox4.Margin = new WpfThickness(6, 0, 0, 0);
+            fgRow.Children.Add(MakeComboWrapper(_frameGrabbersComboBox4, 120));
+            System.Windows.Controls.Grid.SetRow(fgRow, r); System.Windows.Controls.Grid.SetColumn(fgRow, 0); System.Windows.Controls.Grid.SetColumnSpan(fgRow, 4);
+            componentsGrid.Children.Add(fgRow);
         }
 
         systemOptionsContainer.Child = componentsGrid;
@@ -2959,6 +3040,32 @@ public partial class MainWindow : Window
                     var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
                     component = !string.IsNullOrEmpty(blt) ? $"Backlight (Type: {blt})" : "Backlight";
                 }
+                else if (kv.Key == "Frame Grabbers")
+                {
+                    var fgParts = new List<string>();
+                    foreach (var fgCb in new[] { _frameGrabbersComboBox, _frameGrabbersComboBox2, _frameGrabbersComboBox3, _frameGrabbersComboBox4 })
+                    {
+                        var v = fgCb?.SelectedItem?.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(v)) fgParts.Add(v);
+                    }
+                    component = fgParts.Count > 0 ? $"Frame Grabbers ({string.Join(", ", fgParts)})" : "Frame Grabbers";
+                }
+                else if (kv.Key == "LOS alignment target")
+                {
+                    component = (_losHalogenCheckBox?.IsChecked == true)
+                        ? "LOS alignment target + Halogen"
+                        : "LOS alignment target";
+                }
+                else if (kv.Key == "VRS")
+                {
+                    var vrsParts = new List<string>();
+                    foreach (var vrsCb in new[] { _vrsComboBox1, _vrsComboBox2, _vrsComboBox3, _vrsComboBox4 })
+                    {
+                        var v = vrsCb?.SelectedItem?.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(v) && v != "NA") vrsParts.Add(v);
+                    }
+                    component = vrsParts.Count > 0 ? $"VRS ({string.Join(", ", vrsParts)})" : "VRS";
+                }
                 else
                 {
                     component = kv.Key;
@@ -3137,6 +3244,30 @@ public partial class MainWindow : Window
                     {
                         var btype = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
                         return !string.IsNullOrEmpty(btype) ? $"Backlight (Type: {btype})" : "Backlight";
+                    }
+                    if (kv.Key == "Frame Grabbers")
+                    {
+                        var fgParts = new List<string>();
+                        foreach (var fgCb in new[] { _frameGrabbersComboBox, _frameGrabbersComboBox2, _frameGrabbersComboBox3, _frameGrabbersComboBox4 })
+                        {
+                            var v = fgCb?.SelectedItem?.ToString() ?? "";
+                            if (!string.IsNullOrEmpty(v)) fgParts.Add(v);
+                        }
+                        return fgParts.Count > 0 ? $"Frame Grabbers ({string.Join(", ", fgParts)})" : "Frame Grabbers";
+                    }
+                    if (kv.Key == "LOS alignment target")
+                        return (_losHalogenCheckBox?.IsChecked == true)
+                            ? "LOS alignment target + Halogen"
+                            : "LOS alignment target";
+                    if (kv.Key == "VRS")
+                    {
+                        var vrsParts = new List<string>();
+                        foreach (var vrsCb in new[] { _vrsComboBox1, _vrsComboBox2, _vrsComboBox3, _vrsComboBox4 })
+                        {
+                            var v = vrsCb?.SelectedItem?.ToString() ?? "";
+                            if (!string.IsNullOrEmpty(v) && v != "NA") vrsParts.Add(v);
+                        }
+                        return vrsParts.Count > 0 ? $"VRS ({string.Join(", ", vrsParts)})" : "VRS";
                     }
                     return kv.Key;
                 });
