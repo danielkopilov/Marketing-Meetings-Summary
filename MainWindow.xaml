@@ -330,32 +330,36 @@
 
         <!-- Right Content Area - Two Separate Cards -->
         <StackPanel Grid.Column="1">
-            <!-- Title and Export Button (No white card - on background) -->
+            <!-- Title and Buttons (No white card - on background) -->
             <Grid Margin="24,8,24,12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
+                    <!-- Title: auto-size so buttons sit right next to it -->
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="28"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
+                <!-- Title -->
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock x:Name="titleText"
-                               Text="Marketing Kickoff Meeting Summary" 
-                               FontSize="28" 
+                               Text="Marketing Kickoff Meeting Summary"
+                               FontSize="25"
                                FontWeight="SemiBold"
                                FontFamily="Inter"
-                               Foreground="#000000">
+                               Foreground="#000000"
+                               TextWrapping="NoWrap">
                         <TextBlock.Effect>
-                            <DropShadowEffect ShadowDepth="0" 
-                                              BlurRadius="8" 
-                                              Opacity="0.15" 
+                            <DropShadowEffect ShadowDepth="0"
+                                              BlurRadius="8"
+                                              Opacity="0.15"
                                               Color="#000000"/>
                         </TextBlock.Effect>
                     </TextBlock>
-                    <Border Height="3" 
-                            CornerRadius="2" 
+                    <Border Height="3"
+                            CornerRadius="2"
                             Margin="0,4,0,0"
                             HorizontalAlignment="Left"
-                            Width="500"
+                            Width="380"
                             Opacity="0.5">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -366,20 +370,30 @@
                     </Border>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Load Template with countdown tightly above it -->
-                    <StackPanel Orientation="Vertical" Margin="0,0,8,0" VerticalAlignment="Bottom">
+                <!-- Buttons block:
+                     Left col:  countdown + Load Template
+                     Right col: Export Summary (top) + Send Summary (bottom) — same width, minimal gap -->
+                <Grid Grid.Column="2" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left col: countdown above Load Template -->
+                    <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
                         <TextBlock x:Name="txtAutoSaveCountdown"
                                    Text="Automatic save in: 1:00"
-                                   FontSize="10"
+                                   FontSize="8"
                                    FontWeight="Normal"
-                                   Foreground="#111827"
+                                   Foreground="#6B7280"
                                    HorizontalAlignment="Center"
-                                   Margin="0,0,0,2"/>
+                                   Margin="0,0,0,3"/>
                         <Button Content="📂 Load Template"
                                 Click="LoadTemplateButton_Click"
-                                Padding="10,6,10,6"
-                                FontSize="12"
+                                HorizontalAlignment="Stretch"
+                                Padding="8,6,8,6"
+                                FontSize="10"
                                 FontWeight="SemiBold"
                                 Cursor="Hand"
                                 Foreground="White"
@@ -388,7 +402,7 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="{TemplateBinding Background}"
-                                            CornerRadius="12"
+                                            CornerRadius="10"
                                             Padding="{TemplateBinding Padding}">
                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
@@ -396,28 +410,53 @@
                             </Button.Template>
                         </Button>
                     </StackPanel>
-                    <!-- Export Summary aligned to the button row -->
-                    <Button Content="📄 Export Summary"
-                            Click="btnGenerateDocument_Click"
-                            VerticalAlignment="Bottom"
-                            Padding="10,6,10,6"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Cursor="Hand"
-                            Foreground="White"
-                            BorderThickness="0"
-                            Background="#3B82F6">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        CornerRadius="12"
-                                        Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                </StackPanel>
+
+                    <!-- Right col: Export Summary on top, Send Summary below, same * width, 4px gap -->
+                    <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Bottom">
+                        <Button Content="📄 Export Summary"
+                                Click="btnGenerateDocument_Click"
+                                HorizontalAlignment="Stretch"
+                                Padding="8,6,8,6"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#3B82F6">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="10"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Content="✉️ Send Summary"
+                                Click="SendSummaryButton_Click"
+                                HorizontalAlignment="Stretch"
+                                Margin="0,4,0,0"
+                                Padding="8,6,8,6"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#7C3AED">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="10"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+
+                </Grid>
             </Grid>
 
             <!-- Card: Configuration Content with ScrollViewer -->

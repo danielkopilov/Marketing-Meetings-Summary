@@ -144,6 +144,7 @@ public partial class MainWindow : Window
     private System.Windows.Threading.DispatcherTimer? _autoSaveTimer;
     private System.Windows.Threading.DispatcherTimer? _countdownTimer;
     private int _countdownSeconds = 60;
+    private string? _lastExportedPath;
     private System.Windows.Controls.ComboBox? _bbTypeComboBox;
     private System.Windows.Controls.ComboBox? _bbSizeComboBox;
     private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
@@ -726,24 +727,28 @@ public partial class MainWindow : Window
         };
         chipPanel.Children.Add(nameText);
 
-        // Remove button (X)
-        var removeButton = new System.Windows.Controls.Button
+        // Remove X — plain TextBlock so no Button ControlTemplate can hide it
+        var removeX = new System.Windows.Controls.TextBlock
         {
-            Content = "✕",
-            Width = 16,
-            Height = 16,
-            FontSize = 10,
-            Background = System.Windows.Media.Brushes.Transparent,
-            BorderThickness = new WpfThickness(0),
+            Text = "✕",
+            FontSize = 13,
+            FontWeight = System.Windows.FontWeights.Bold,
             Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(100, 116, 139)),
+                System.Windows.Media.Color.FromRgb(220, 38, 38)),
             Cursor = System.Windows.Input.Cursors.Hand,
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Padding = new WpfThickness(0),
-            Tag = name
+            Margin = new WpfThickness(4, 0, 2, 0),
+            Tag = name,
+            ToolTip = $"Remove {name}"
         };
-        removeButton.Click += RemoveParticipantChip_Click;
-        chipPanel.Children.Add(removeButton);
+        removeX.MouseEnter += (s, e) =>
+            removeX.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(153, 27, 27));
+        removeX.MouseLeave += (s, e) =>
+            removeX.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(220, 38, 38));
+        removeX.MouseLeftButtonUp += RemoveParticipantChip_Click;
+        chipPanel.Children.Add(removeX);
 
         chipBorder.Child = chipPanel;
 
@@ -766,15 +771,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RemoveParticipantChip_Click(object sender, RoutedEventArgs e)
+    private void RemoveParticipantChip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is not System.Windows.Controls.Button button) return;
-        if (button.Tag is not string name) return;
+        if (sender is not System.Windows.Controls.TextBlock removeX) return;
+        if (removeX.Tag is not string name) return;
 
         selectedParticipants.Remove(name);
 
-        // Find and remove the chip border
-        if (button.Parent is System.Windows.Controls.Panel chipPanel && 
+        // Walk up: TextBlock → StackPanel → Border
+        if (removeX.Parent is System.Windows.Controls.Panel chipPanel &&
             chipPanel.Parent is WpfBorder chipBorder &&
             participantsPanel != null)
         {
@@ -2091,6 +2096,7 @@ public partial class MainWindow : Window
         unitComboBox.Items.Add("mm");
         unitComboBox.Items.Add("mRad");
         unitComboBox.Items.Add("cy/mRad");
+        unitComboBox.Items.Add("Na");
         unitComboBox.SelectedItem = target.Details ?? "mm";
         unitComboBox.SelectionChanged += (s, e) => target.Details = unitComboBox.SelectedItem?.ToString() ?? "mm";
 
@@ -3056,6 +3062,7 @@ public partial class MainWindow : Window
             try
             {
                 GenerateFromTemplate(saveDialog.FileName);
+                _lastExportedPath = saveDialog.FileName;
                 MessageBox.Show($"Document successfully created!\n\nSaved to:\n{saveDialog.FileName}",
                     "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -3184,19 +3191,65 @@ public partial class MainWindow : Window
                         text)));
         }
 
-        void ReplaceMarkerParagraph(string markerFragment, IEnumerable<string> lines)
+        void ReplaceMarkerTableRows(string markerFragment, IEnumerable<string> lines)
         {
-            var para = body.Descendants(w + "p").FirstOrDefault(p =>
+            // Find the paragraph inside the table cell that contains the marker
+            var markerPara = body.Descendants(w + "p").FirstOrDefault(p =>
                 string.Concat(p.Descendants(w + "t").Select(t => (string?)t ?? ""))
                       .Contains(markerFragment));
-            if (para == null) return;
+            if (markerPara == null) return;
 
-            var bullets = lines.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-            var replacements = (bullets.Count > 0 ? bullets : new List<string> { "" })
-                .Select(MakeBulletPara).ToArray<object>();
+            // Walk up to find the table row that owns this paragraph
+            var templateRow = markerPara.Ancestors(w + "tr").FirstOrDefault();
+            if (templateRow == null) return;
 
-            para.AddAfterSelf(replacements);
-            para.Remove();
+            var items = lines.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+
+            if (items.Count == 0)
+            {
+                // Clear the marker text, leave the row with "1" and empty content
+                markerPara.Elements(w + "r").Remove();
+                return;
+            }
+
+            // Fill the first (template) row with item #1
+            var cells = templateRow.Elements(w + "tc").ToList();
+            // Update number cell to "1"
+            if (cells.Count > 0)
+            {
+                var numPara = cells[0].Element(w + "p");
+                numPara?.Elements(w + "r").Remove();
+                numPara?.Add(MakeDataRun("1"));
+            }
+            // Replace marker paragraph in content cell with item text
+            markerPara.Elements(w + "r").Remove();
+            markerPara.Add(MakeDataRun(items[0]));
+
+            // Clone the template row for each additional item
+            var insertAfter = templateRow;
+            for (int i = 1; i < items.Count; i++)
+            {
+                var clonedRow = new XElement(templateRow);
+                var clonedCells = clonedRow.Elements(w + "tc").ToList();
+
+                // Set row number
+                if (clonedCells.Count > 0)
+                {
+                    var numPara = clonedCells[0].Element(w + "p");
+                    numPara?.Elements(w + "r").Remove();
+                    numPara?.Add(MakeDataRun((i + 1).ToString()));
+                }
+                // Set content
+                if (clonedCells.Count > 1)
+                {
+                    var contentPara = clonedCells[1].Element(w + "p");
+                    contentPara?.Elements(w + "r").Remove();
+                    contentPara?.Add(MakeDataRun(items[i]));
+                }
+
+                insertAfter.AddAfterSelf(clonedRow);
+                insertAfter = clonedRow;
+            }
         }
 
         // ── Simple field replacements ─────────────────────────────────────────
@@ -3232,12 +3285,15 @@ public partial class MainWindow : Window
             // Save a pristine copy BEFORE modifying the first row, so clones get clean placeholders
             var pristineRow = new XElement(templateRow);
             var sizeUnitRun = templateRow.Descendants(w + "r")
+                .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size");
+            var unitRun = templateRow.Descendants(w + "r")
                 .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size Unit");
 
             if (targetItems.Count == 0)
             {
                 MakeBlackRun(targetNameRun, "");
                 if (sizeUnitRun != null) MakeBlackRun(sizeUnitRun, "");
+                if (unitRun != null) MakeBlackRun(unitRun, "");
             }
             else
             {
@@ -3252,8 +3308,9 @@ public partial class MainWindow : Window
                     pPr.Add(new XElement(w + "jc", new XAttribute(w + "val", "center")));
                 }
                 if (sizeUnitRun != null)
-                    MakeBlackRun(sizeUnitRun,
-                        $"{targetItems[0].Qty} {targetItems[0].Details}".Trim());
+                    MakeBlackRun(sizeUnitRun, targetItems[0].Qty);
+                if (unitRun != null)
+                    MakeBlackRun(unitRun, targetItems[0].Details);
 
                 var insertAfter = templateRow;
                 for (int i = 1; i < targetItems.Count; i++)
@@ -3263,6 +3320,8 @@ public partial class MainWindow : Window
                     var cloneNameRun = clonedRow.Descendants(w + "r")
                         .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Target Name");
                     var cloneSizeRun = clonedRow.Descendants(w + "r")
+                        .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size");
+                    var cloneUnitRun = clonedRow.Descendants(w + "r")
                         .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size Unit");
                     if (cloneNameRun != null)
                     {
@@ -3277,8 +3336,9 @@ public partial class MainWindow : Window
                         }
                     }
                     if (cloneSizeRun != null)
-                        MakeBlackRun(cloneSizeRun,
-                            $"{targetItems[i].Qty} {targetItems[i].Details}".Trim());
+                        MakeBlackRun(cloneSizeRun, targetItems[i].Qty);
+                    if (cloneUnitRun != null)
+                        MakeBlackRun(cloneUnitRun, targetItems[i].Details);
                     insertAfter.AddAfterSelf(clonedRow);
                     insertAfter = clonedRow;
                 }
@@ -3291,7 +3351,7 @@ public partial class MainWindow : Window
             .Where(kv => kv.Value.IsChecked == true)
             .Select(kv =>
             {
-                string component;
+                string config;
                 if (kv.Key == "B.B")
                 {
                     var parts = new List<string>();
@@ -3299,17 +3359,17 @@ public partial class MainWindow : Window
                     var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
                     if (!string.IsNullOrEmpty(bt)) parts.Add($"Type: {bt}");
                     if (!string.IsNullOrEmpty(bs)) parts.Add($"Size: {bs}");
-                    component = parts.Count > 0 ? $"B.B ({string.Join(", ", parts)})" : "B.B";
+                    config = string.Join(", ", parts);
                 }
                 else if (kv.Key == "I.S")
                 {
                     var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
-                    component = !string.IsNullOrEmpty(ap) ? $"I.S (Exit Aperture: {ap})" : "I.S";
+                    config = !string.IsNullOrEmpty(ap) ? $"Exit Aperture: {ap}" : "";
                 }
                 else if (kv.Key == "Backlight")
                 {
                     var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
-                    component = !string.IsNullOrEmpty(blt) ? $"Backlight (Type: {blt})" : "Backlight";
+                    config = !string.IsNullOrEmpty(blt) ? $"Type: {blt}" : "";
                 }
                 else if (kv.Key == "Frame Grabbers")
                 {
@@ -3319,7 +3379,7 @@ public partial class MainWindow : Window
                         var v = fgCb?.SelectedItem?.ToString() ?? "";
                         if (!string.IsNullOrEmpty(v)) fgParts.Add(v);
                     }
-                    component = fgParts.Count > 0 ? $"Frame Grabbers ({string.Join(", ", fgParts)})" : "Frame Grabbers";
+                    config = string.Join(", ", fgParts);
                 }
                 else if (kv.Key == "Gimbal")
                 {
@@ -3331,13 +3391,11 @@ public partial class MainWindow : Window
                     if (!string.IsNullOrEmpty(lc)) parts.Add($"Load Capacity: {lc} KG");
                     var acc = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "";
                     if (!string.IsNullOrEmpty(acc)) parts.Add($"Accuracy: {acc}");
-                    component = parts.Count > 0 ? $"Gimbal ({string.Join(", ", parts)})" : "Gimbal";
+                    config = string.Join(", ", parts);
                 }
                 else if (kv.Key == "LOS alignment target")
                 {
-                    component = (_losHalogenCheckBox?.IsChecked == true)
-                        ? "LOS alignment target + Halogen"
-                        : "LOS alignment target";
+                    config = (_losHalogenCheckBox?.IsChecked == true) ? "+Halogen" : "";
                 }
                 else if (kv.Key == "VRS")
                 {
@@ -3347,14 +3405,14 @@ public partial class MainWindow : Window
                         var v = vrsCb?.SelectedItem?.ToString() ?? "";
                         if (!string.IsNullOrEmpty(v) && v != "NA") vrsParts.Add(v);
                     }
-                    component = vrsParts.Count > 0 ? $"VRS ({string.Join(", ", vrsParts)})" : "VRS";
+                    config = string.Join(", ", vrsParts);
                 }
                 else
                 {
-                    component = kv.Key;
+                    config = "";
                 }
                 _componentNotes.TryGetValue(kv.Key, out var note);
-                return (component, note: note ?? "");
+                return (name: kv.Key, config, note: note ?? "");
             }).ToList();
 
         // Add any custom config lines (no note)
@@ -3362,7 +3420,7 @@ public partial class MainWindow : Window
             configItems.AddRange(txtCustomConfig.Text
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
                 .Select(l => l.Trim()).Where(l => l.Length > 0)
-                .Select(l => (component: l, note: "")));
+                .Select(l => (name: l, config: "", note: "")));
 
         // Helper: build a plain run with 11pt text
         XElement MakeDataRun(string value) =>
@@ -3405,6 +3463,9 @@ public partial class MainWindow : Window
             }
         }
 
+        // Helper: clone a table cell's tcPr and fill it with plain (non-bold) text — used for Configuration and Notes columns
+        XElement CloneConfigCell(XElement sourceCell, string text) => CloneNoteCell(sourceCell, text);
+
         // Helper: clone a table cell's tcPr and fill it with plain (non-bold) text — used for Notes column
         XElement CloneNoteCell(XElement sourceCell, string text)
         {
@@ -3421,7 +3482,7 @@ public partial class MainWindow : Window
             return cell;
         }
 
-        // Helper: clone a table cell's tcPr and fill it with bold-name + regular-options runs — used for Component column
+        // Helper: clone a table cell's tcPr and fill it with a bold run — used for Component column
         XElement CloneCell(XElement sourceCell, string text)
         {
             var tcPr = sourceCell.Element(w + "tcPr");
@@ -3432,7 +3493,7 @@ public partial class MainWindow : Window
                     new XElement(w + "rPr",
                         new XElement(w + "sz",   new XAttribute(w + "val", "22")),
                         new XElement(w + "szCs", new XAttribute(w + "val", "22")))));
-            if (!string.IsNullOrEmpty(text)) AddComponentRuns(para, text);
+            if (!string.IsNullOrEmpty(text)) para.Add(MakeBoldDataRun(text));
             cell.Add(para);
             return cell;
         }
@@ -3442,7 +3503,7 @@ public partial class MainWindow : Window
         if (configRun != null)
         {
             var templateRow = configRun.Ancestors(w + "tr").First();
-            var cells = templateRow.Elements(w + "tc").ToList(); // [0]=Component, [1]=Notes
+            var cells = templateRow.Elements(w + "tc").ToList(); // [0]=Component, [1]=Configuration, [2]=Notes
 
             if (configItems.Count == 0)
             {
@@ -3450,19 +3511,28 @@ public partial class MainWindow : Window
             }
             else
             {
-                // Fill the first (template) row — replace the red placeholder run with
-                // bold component name + regular options in the same paragraph
-                var firstComp = configItems[0].component;
+                // Fill the first (template) row:
+                // cells[0] = Component (bold name only)
+                // cells[1] = Configuration (options, plain)
+                // cells[2] = Notes (plain)
                 var configPara = configRun.Parent; // <w:p>
                 configPara?.Elements(w + "r").Remove();
-                if (configPara != null) AddComponentRuns(configPara, firstComp);
+                if (configPara != null) configPara.Add(MakeBoldDataRun(configItems[0].name));
 
-                // Fill notes cell of first row
+                // Fill configuration cell of first row (cells[1])
                 if (cells.Count >= 2)
                 {
-                    var notesPara = cells[1].Element(w + "p");
+                    var configCell1Para = cells[1].Element(w + "p");
+                    configCell1Para?.Elements(w + "r").Remove();
+                    if (!string.IsNullOrWhiteSpace(configItems[0].config))
+                        configCell1Para?.Add(MakeDataRun(configItems[0].config));
+                }
+
+                // Fill notes cell of first row (cells[2])
+                if (cells.Count >= 3)
+                {
+                    var notesPara = cells[2].Element(w + "p");
                     notesPara?.Elements(w + "r").Remove();
-                    // Ensure paragraph rPr has no bold
                     var notesPPr = notesPara?.Element(w + "pPr");
                     notesPPr?.Element(w + "rPr")?.Elements(w + "b").Remove();
                     notesPPr?.Element(w + "rPr")?.Elements(w + "bCs").Remove();
@@ -3478,22 +3548,22 @@ public partial class MainWindow : Window
                     var trPr = templateRow.Element(w + "trPr");
                     if (trPr != null) newRow.Add(new XElement(trPr));
 
-                    XElement BuildFallbackCompCell()
-                    {
-                        var p = new XElement(w + "p");
-                        AddComponentRuns(p, configItems[i].component);
-                        return new XElement(w + "tc", p);
-                    }
                     var compCell = cells.Count > 0
-                        ? CloneCell(cells[0], configItems[i].component)
-                        : BuildFallbackCompCell();
+                        ? CloneCell(cells[0], configItems[i].name)
+                        : new XElement(w + "tc", new XElement(w + "p", MakeBoldDataRun(configItems[i].name)));
 
-                    var notesCell = cells.Count > 1
-                        ? CloneNoteCell(cells[1], configItems[i].note)
+                    var configCell = cells.Count > 1
+                        ? CloneConfigCell(cells[1], configItems[i].config)
+                        : new XElement(w + "tc", new XElement(w + "p",
+                            string.IsNullOrEmpty(configItems[i].config) ? null : MakeDataRun(configItems[i].config)));
+
+                    var notesCell = cells.Count > 2
+                        ? CloneNoteCell(cells[2], configItems[i].note)
                         : new XElement(w + "tc", new XElement(w + "p",
                             string.IsNullOrEmpty(configItems[i].note) ? null : MakeDataRun(configItems[i].note)));
 
                     newRow.Add(compCell);
+                    newRow.Add(configCell);
                     newRow.Add(notesCell);
 
                     insertAfter.AddAfterSelf(newRow);
@@ -3516,10 +3586,10 @@ public partial class MainWindow : Window
         }
 
         // ── Section paragraph replacements ────────────────────────────────────
-        ReplaceMarkerParagraph("Start inserting PM questions",         _questions.Select(q => q.Text));
-        ReplaceMarkerParagraph("Start inserting marketing questions",  _marketingQuestions.Select(q => q.Text));
-        ReplaceMarkerParagraph("Start inserting marketing notes",      _marketingNotes.Select(n => n.Text));
-        ReplaceMarkerParagraph("Start inserting PM notes",            _pmNotes.Select(n => n.Text));
+        ReplaceMarkerTableRows("Start inserting PM questions",         _questions.Select(q => q.Text));
+        ReplaceMarkerTableRows("Start inserting Marketing questions",  _marketingQuestions.Select(q => q.Text));
+        ReplaceMarkerTableRows("Start inserting Marketing notes",      _marketingNotes.Select(n => n.Text));
+        ReplaceMarkerTableRows("Start inserting PM notes",            _pmNotes.Select(n => n.Text));
 
         // ── Save ──────────────────────────────────────────────────────────────
         var settings = new System.Xml.XmlWriterSettings
@@ -3980,5 +4050,38 @@ public partial class MainWindow : Window
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+    }
+
+    private void SendSummaryButton_Click(object sender, RoutedEventArgs e)
+    {
+        // If not yet exported, silently generate to a temp file so we always have an attachment
+        if (string.IsNullOrEmpty(_lastExportedPath) ||
+            !System.IO.File.Exists(_lastExportedPath))
+        {
+            try
+            {
+                string tempPath = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(),
+                    $"Kickoff {txtOrderNumber.Text.Trim()}.doc");
+
+                GenerateFromTemplate(tempPath);
+                _lastExportedPath = tempPath;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not auto-generate the summary document:\n\n{ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
+
+        var win = new SendSummaryWindow(
+            txtOrderNumber.Text.Trim(),
+            txtCustomerName.Text.Trim(),
+            txtProjectType.Text.Trim(),
+            new System.Collections.Generic.List<string>(selectedParticipants),
+            _lastExportedPath ?? "");
+        win.Owner = this;
+        win.ShowDialog();
     }
 }
