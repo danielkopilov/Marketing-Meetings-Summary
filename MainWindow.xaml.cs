@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Xml.Linq;
 using Microsoft.Win32;
@@ -64,6 +65,50 @@ public class QuestionItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
+public class TemplateData
+{
+    public string OrderNumber { get; set; } = "";
+    public string CustomerName { get; set; } = "";
+    public string FinalCustomer { get; set; } = "";
+    public string ProjectType { get; set; } = "";
+    public string PakaNumber { get; set; } = "";
+    public string ReferenceOrder { get; set; } = "";
+    public string DeliveryDate { get; set; } = "";
+    public string DesignDueDate { get; set; } = "";
+    public List<string> Participants { get; set; } = new();
+    public string SellingPrice { get; set; } = "";
+    public string MaterialCost { get; set; } = "";
+    public string ProjectHours { get; set; } = "";
+    public string Penalties { get; set; } = "";
+    public bool DORated { get; set; }
+    public Dictionary<string, bool> ConfigCheckBoxes { get; set; } = new();
+    public Dictionary<string, string> ComponentNotes { get; set; } = new();
+    public string BBType { get; set; } = "";
+    public string BBSize { get; set; } = "";
+    public string ISAperture { get; set; } = "";
+    public string BacklightType { get; set; } = "";
+    public string MaxWeight { get; set; } = "";
+    public string FiniteDistance { get; set; } = "";
+    public string Vrs1 { get; set; } = "";
+    public string Vrs2 { get; set; } = "";
+    public string Vrs3 { get; set; } = "";
+    public string Vrs4 { get; set; } = "";
+    public string GimbalSize { get; set; } = "";
+    public string GimbalLoadCapacity { get; set; } = "";
+    public string GimbalAccuracy { get; set; } = "";
+    public bool GimbalJoystick { get; set; }
+    public bool LosHalogen { get; set; }
+    public string FrameGrabber1 { get; set; } = "";
+    public string FrameGrabber2 { get; set; } = "";
+    public string FrameGrabber3 { get; set; } = "";
+    public string FrameGrabber4 { get; set; } = "";
+    public List<TargetItem> Targets { get; set; } = new();
+    public List<string> PmQuestions { get; set; } = new();
+    public List<string> MarketingQuestions { get; set; } = new();
+    public List<string> MarketingNotes { get; set; } = new();
+    public List<string> PmNotes { get; set; } = new();
+}
+
 public partial class MainWindow : Window
 {
     // Configuration items organized by sections
@@ -96,6 +141,9 @@ public partial class MainWindow : Window
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
     private readonly Dictionary<string, string> _componentNotes = new();
+    private System.Windows.Threading.DispatcherTimer? _autoSaveTimer;
+    private System.Windows.Threading.DispatcherTimer? _countdownTimer;
+    private int _countdownSeconds = 60;
     private System.Windows.Controls.ComboBox? _bbTypeComboBox;
     private System.Windows.Controls.ComboBox? _bbSizeComboBox;
     private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
@@ -174,6 +222,7 @@ public partial class MainWindow : Window
             InitializeQuestions();
             InitializeMarketingQuestions();
             InitializeNotes();
+            StartAutoSaveTimer();
 
             // Load Overview section after window is loaded
             this.Loaded += MainWindow_Loaded;
@@ -1677,6 +1726,9 @@ public partial class MainWindow : Window
 
         // Sync enabled state for all inline controls to match current checkbox states
         SyncInlineControlStates();
+
+        // Apply any pending template config (inline combos/textboxes loaded from template)
+        ApplyPendingTemplateConfig();
 
         panel.Children.Add(card);
     }
@@ -3682,5 +3734,251 @@ public partial class MainWindow : Window
         runProperties.AppendChild(new FontSizeComplexScript { Val = fontSize.ToString() });
         textRun.AppendChild(runProperties);
         textRun.AppendChild(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
+    }
+
+    // ── Template System ──────────────────────────────────────────────────────
+
+    private static string GetTemplatesFolder()
+    {
+        string folder = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Templates");
+        System.IO.Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    private string GetTemplateName()
+    {
+        string order    = txtOrderNumber.Text.Trim();
+        string customer = txtCustomerName.Text.Trim();
+        if (string.IsNullOrEmpty(order) && string.IsNullOrEmpty(customer))
+            return "";
+        return $"{order} {customer}".Trim();
+    }
+
+    private TemplateData CollectTemplateData()
+    {
+        var data = new TemplateData
+        {
+            OrderNumber        = txtOrderNumber.Text,
+            CustomerName       = txtCustomerName.Text,
+            FinalCustomer      = txtFinalCustomer.Text,
+            ProjectType        = txtProjectType.Text,
+            PakaNumber         = txtPakaNumber.Text,
+            ReferenceOrder     = txtReferenceOrder.Text,
+            DeliveryDate       = dpDeliveryDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
+            DesignDueDate      = dpDesignDueDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
+            Participants       = new List<string>(selectedParticipants),
+            SellingPrice       = txtSellingPrice.Text,
+            MaterialCost       = txtMaterialCost.Text,
+            ProjectHours       = txtProjectHours.Text,
+            Penalties          = txtPenalties.Text,
+            DORated            = chkDORated.IsChecked == true,
+            ComponentNotes     = new Dictionary<string, string>(_componentNotes),
+            BBType             = _bbTypeComboBox?.SelectedItem?.ToString() ?? "",
+            BBSize             = _bbSizeComboBox?.SelectedItem?.ToString() ?? "",
+            ISAperture         = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "",
+            BacklightType      = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "",
+            MaxWeight          = _maxWeightTextBox?.Text ?? "",
+            FiniteDistance     = _finiteDistance1TextBox?.Text ?? "",
+            Vrs1               = _vrsComboBox1?.SelectedItem?.ToString() ?? "",
+            Vrs2               = _vrsComboBox2?.SelectedItem?.ToString() ?? "",
+            Vrs3               = _vrsComboBox3?.SelectedItem?.ToString() ?? "",
+            Vrs4               = _vrsComboBox4?.SelectedItem?.ToString() ?? "",
+            GimbalSize         = _gimbalSizeTextBox?.Text ?? "",
+            GimbalLoadCapacity = _gimbalLoadCapacityTextBox?.Text ?? "",
+            GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "",
+            GimbalJoystick     = _gimbalJoystickCheckBox?.IsChecked == true,
+            LosHalogen         = _losHalogenCheckBox?.IsChecked == true,
+            FrameGrabber1      = _frameGrabbersComboBox?.SelectedItem?.ToString() ?? "",
+            FrameGrabber2      = _frameGrabbersComboBox2?.SelectedItem?.ToString() ?? "",
+            FrameGrabber3      = _frameGrabbersComboBox3?.SelectedItem?.ToString() ?? "",
+            FrameGrabber4      = _frameGrabbersComboBox4?.SelectedItem?.ToString() ?? "",
+            Targets            = _targets.Select(t => new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details }).ToList(),
+            PmQuestions        = _questions.Select(q => q.Text).ToList(),
+            MarketingQuestions = _marketingQuestions.Select(q => q.Text).ToList(),
+            MarketingNotes     = _marketingNotes.Select(n => n.Text).ToList(),
+            PmNotes            = _pmNotes.Select(n => n.Text).ToList(),
+        };
+
+        foreach (var kv in _configCheckBoxes)
+            data.ConfigCheckBoxes[kv.Key] = kv.Value.IsChecked == true;
+
+        return data;
+    }
+
+    private void SaveTemplate()
+    {
+        try
+        {
+            string name = GetTemplateName();
+            if (string.IsNullOrEmpty(name)) return;
+
+            string folder = GetTemplatesFolder();
+            string path   = System.IO.Path.Combine(folder, name + ".json");
+
+            var    data    = CollectTemplateData();
+            var    options = new JsonSerializerOptions { WriteIndented = true };
+            string json    = JsonSerializer.Serialize(data, options);
+            System.IO.File.WriteAllText(path, json);
+        }
+        catch
+        {
+            // Silent auto-save — never interrupt the user
+        }
+    }
+
+    private void StartAutoSaveTimer()
+    {
+        _countdownSeconds = 60;
+
+        // Per-second countdown timer — updates the label
+        _countdownTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _countdownTimer.Tick += (s, e) =>
+        {
+            _countdownSeconds--;
+            if (_countdownSeconds < 0) _countdownSeconds = 59;
+            UpdateCountdownLabel();
+        };
+        _countdownTimer.Start();
+
+        // Auto-save timer — fires every 60 seconds
+        _autoSaveTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(1)
+        };
+        _autoSaveTimer.Tick += (s, e) =>
+        {
+            SaveTemplate();
+            _countdownSeconds = 60;
+            UpdateCountdownLabel();
+        };
+        _autoSaveTimer.Start();
+
+        UpdateCountdownLabel();
+    }
+
+    private void UpdateCountdownLabel()
+    {
+        if (txtAutoSaveCountdown == null) return;
+        int mins = _countdownSeconds / 60;
+        int secs = _countdownSeconds % 60;
+        txtAutoSaveCountdown.Text = $"Automatic save in: {mins}:{secs:D2}";
+    }
+
+    private TemplateData? _pendingTemplateConfig;
+
+    private void ApplyTemplateData(TemplateData data)
+    {
+        txtOrderNumber.Text    = data.OrderNumber;
+        txtCustomerName.Text   = data.CustomerName;
+        txtFinalCustomer.Text  = data.FinalCustomer;
+        txtProjectType.Text    = data.ProjectType;
+        txtPakaNumber.Text     = data.PakaNumber;
+        txtReferenceOrder.Text = data.ReferenceOrder;
+        txtSellingPrice.Text   = data.SellingPrice;
+        txtMaterialCost.Text   = data.MaterialCost;
+        txtProjectHours.Text   = data.ProjectHours;
+        txtPenalties.Text      = data.Penalties;
+        chkDORated.IsChecked   = data.DORated;
+
+        if (DateTime.TryParse(data.DeliveryDate, out var dd))
+            dpDeliveryDate.SelectedDate = dd;
+        if (DateTime.TryParse(data.DesignDueDate, out var ddd))
+            dpDesignDueDate.SelectedDate = ddd;
+
+        selectedParticipants.Clear();
+        selectedParticipants.AddRange(data.Participants);
+
+        foreach (var kv in data.ConfigCheckBoxes)
+            if (_configCheckBoxes.TryGetValue(kv.Key, out var cb))
+                cb.IsChecked = kv.Value;
+
+        _componentNotes.Clear();
+        foreach (var kv in data.ComponentNotes)
+            _componentNotes[kv.Key] = kv.Value;
+
+        _targets.Clear();
+        foreach (var t in data.Targets)
+            _targets.Add(new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details });
+
+        _questions.Clear();
+        for (int i = 0; i < data.PmQuestions.Count; i++)
+            _questions.Add(new QuestionItem { Text = data.PmQuestions[i], Number = i + 1 });
+
+        _marketingQuestions.Clear();
+        for (int i = 0; i < data.MarketingQuestions.Count; i++)
+            _marketingQuestions.Add(new QuestionItem { Text = data.MarketingQuestions[i], Number = i + 1 });
+
+        _marketingNotes.Clear();
+        for (int i = 0; i < data.MarketingNotes.Count; i++)
+            _marketingNotes.Add(new QuestionItem { Text = data.MarketingNotes[i], Number = i + 1 });
+
+        _pmNotes.Clear();
+        for (int i = 0; i < data.PmNotes.Count; i++)
+            _pmNotes.Add(new QuestionItem { Text = data.PmNotes[i], Number = i + 1 });
+
+        // Store pending inline config data for when the Config section is next loaded
+        _pendingTemplateConfig = data;
+
+        // Reload the Overview section to reflect the new data
+        LoadSection(0);
+    }
+
+    private void ApplyPendingTemplateConfig()
+    {
+        if (_pendingTemplateConfig == null) return;
+        var d = _pendingTemplateConfig;
+
+        RestoreComboSelection(_bbTypeComboBox,          d.BBType);
+        RestoreComboSelection(_bbSizeComboBox,          d.BBSize);
+        RestoreComboSelection(_isExitApertureComboBox,  d.ISAperture);
+        RestoreComboSelection(_backlightTypeComboBox,   d.BacklightType);
+        if (_maxWeightTextBox          != null) _maxWeightTextBox.Text          = d.MaxWeight;
+        if (_finiteDistance1TextBox    != null) _finiteDistance1TextBox.Text    = d.FiniteDistance;
+        RestoreComboSelection(_vrsComboBox1, d.Vrs1);
+        RestoreComboSelection(_vrsComboBox2, d.Vrs2);
+        RestoreComboSelection(_vrsComboBox3, d.Vrs3);
+        RestoreComboSelection(_vrsComboBox4, d.Vrs4);
+        if (_gimbalSizeTextBox         != null) _gimbalSizeTextBox.Text         = d.GimbalSize;
+        if (_gimbalLoadCapacityTextBox != null) _gimbalLoadCapacityTextBox.Text = d.GimbalLoadCapacity;
+        RestoreComboSelection(_gimbalAccuracyComboBox, d.GimbalAccuracy);
+        if (_gimbalJoystickCheckBox    != null) _gimbalJoystickCheckBox.IsChecked = d.GimbalJoystick;
+        if (_losHalogenCheckBox        != null) _losHalogenCheckBox.IsChecked     = d.LosHalogen;
+        RestoreComboSelection(_frameGrabbersComboBox,  d.FrameGrabber1);
+        RestoreComboSelection(_frameGrabbersComboBox2, d.FrameGrabber2);
+        RestoreComboSelection(_frameGrabbersComboBox3, d.FrameGrabber3);
+        RestoreComboSelection(_frameGrabbersComboBox4, d.FrameGrabber4);
+
+        SyncInlineControlStates();
+        _pendingTemplateConfig = null;
+    }
+
+    private void LoadTemplateButton_Click(object sender, RoutedEventArgs e)
+    {
+        string folder = GetTemplatesFolder();
+
+        var dialog = new TemplatePickerWindow(folder);
+        dialog.Owner = this;
+        if (dialog.ShowDialog() == true && dialog.SelectedTemplatePath != null)
+        {
+            try
+            {
+                string json = System.IO.File.ReadAllText(dialog.SelectedTemplatePath);
+                var data = JsonSerializer.Deserialize<TemplateData>(json);
+                if (data != null)
+                {
+                    ApplyTemplateData(data);
+                    MessageBox.Show("Template loaded successfully!", "Load Template",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load template:\n{ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

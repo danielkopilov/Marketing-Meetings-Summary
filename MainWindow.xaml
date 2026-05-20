@@ -366,11 +366,58 @@
                     </Border>
                 </StackPanel>
 
-                <Button Grid.Column="1" 
-                        Content="📄 Export Summary" 
-                        Style="{StaticResource ModernButton}"
-                        Click="btnGenerateDocument_Click"
-                        VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Load Template with countdown tightly above it -->
+                    <StackPanel Orientation="Vertical" Margin="0,0,8,0" VerticalAlignment="Bottom">
+                        <TextBlock x:Name="txtAutoSaveCountdown"
+                                   Text="Automatic save in: 1:00"
+                                   FontSize="10"
+                                   FontWeight="Normal"
+                                   Foreground="#111827"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,2"/>
+                        <Button Content="📂 Load Template"
+                                Click="LoadTemplateButton_Click"
+                                Padding="10,6,10,6"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#16A34A">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="12"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                    <!-- Export Summary aligned to the button row -->
+                    <Button Content="📄 Export Summary"
+                            Click="btnGenerateDocument_Click"
+                            VerticalAlignment="Bottom"
+                            Padding="10,6,10,6"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Background="#3B82F6">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="12"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!-- Card: Configuration Content with ScrollViewer -->
