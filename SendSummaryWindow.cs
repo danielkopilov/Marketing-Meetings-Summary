@@ -420,15 +420,11 @@ This document covers the key topics and decisions discussed during our kickoff m
   •  Order overview and project scope
   •  System configuration and selected components
   •  Target specifications
-  •  Open questions and action items
-  •  Marketing and PM notes
+  •  Questions and Notes
 
-Please review the summary at your earliest convenience. Should you have any questions, require clarification, or need to discuss any of the items outlined, do not hesitate to reach out.
+Please review the summary and let me know if anything needs to be corrected, clarified, or added before we continue with the next project steps.
 
-We look forward to a successful collaboration on this project.
-
-Best regards,
-CI Systems – Marketing Team";
+Best regards.";
     }
 
     // ──────────────────────────────────────────────────────────────────────

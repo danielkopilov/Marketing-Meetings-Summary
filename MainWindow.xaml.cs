@@ -43,10 +43,29 @@ public class TargetItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
+public class BoldFontWeightConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        value is true ? System.Windows.FontWeights.Bold : System.Windows.FontWeights.Normal;
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotImplementedException();
+}
+
+public class BoldBackgroundConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        value is true
+            ? (object)new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(186, 230, 253))
+            : System.Windows.Media.Brushes.Transparent;
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotImplementedException();
+}
+
 public class QuestionItem : INotifyPropertyChanged
 {
     private string _text = "";
     private int _number;
+    private bool _isBold;
 
     public string Text
     {
@@ -58,6 +77,12 @@ public class QuestionItem : INotifyPropertyChanged
     {
         get => _number;
         set { _number = value; OnPropertyChanged(nameof(Number)); }
+    }
+
+    public bool IsBold
+    {
+        get => _isBold;
+        set { _isBold = value; OnPropertyChanged(nameof(IsBold)); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -185,6 +210,7 @@ public partial class MainWindow : Window
     // Form controls
     private System.Windows.Controls.TextBox txtOrderNumber = new();
     private System.Windows.Controls.TextBox txtCustomerName = new();
+    private System.Windows.Controls.TextBox txtContactPerson = new();
     private System.Windows.Controls.TextBox txtFinalCustomer = new();
     private System.Windows.Controls.ComboBox cmbSystemType    = new();
     private System.Windows.Controls.ComboBox cmbSystemVariant = new();
@@ -200,6 +226,7 @@ public partial class MainWindow : Window
     // Marketing Overview controls
     private System.Windows.Controls.TextBox txtSellingPrice = new();
     private System.Windows.Controls.TextBox txtMaterialCost = new();
+    private System.Windows.Controls.TextBox txtMondayCRM = new();
     private System.Windows.Controls.TextBox txtProjectHours = new();
     private System.Windows.Controls.TextBox txtPenalties = new();
     private WpfCheckBox chkDORated = new();
@@ -315,9 +342,6 @@ public partial class MainWindow : Window
                 case 3: // Actions
                     LoadActionsSection(panel);
                     break;
-                case 4: // Notes
-                    LoadNotesSection(panel);
-                    break;
             }
         }
         catch (Exception ex)
@@ -371,8 +395,11 @@ public partial class MainWindow : Window
         // Order Number - spans 1 column (1/3 width)
         AddFormField(orderFormGrid, "Order Number:", txtOrderNumber, row, 0, 1);
 
-        // Customer Name - spans 2 columns (2/3 width)
-        AddFormField(orderFormGrid, "Customer Name:", txtCustomerName, row++, 1, 2);
+        // Customer Name - spans 1 column (1/3 width)
+        AddFormField(orderFormGrid, "Customer Name:", txtCustomerName, row, 1, 1);
+
+        // Customer/Agent Contact Person - spans 1 column (1/3 width)
+        AddFormField(orderFormGrid, "Customer/Agent Contact Person:", txtContactPerson, row++, 2, 1);
 
         // Agent and Project Type side by side
         AddFormField(orderFormGrid, "Territory:", txtFinalCustomer, row, 0, 1);
@@ -407,24 +434,31 @@ public partial class MainWindow : Window
             };
 
             // ── Type combo ───────────────────────────────────────────────────────
-            cmbSystemType = MakeCompactComboBox(95, "METS", "ILET", "WFOV", "CFT");
+            bool firstLoad = cmbSystemType.Items.Count == 0;
+            if (firstLoad)
+                cmbSystemType = MakeCompactComboBox(95, "METS", "ILET", "WFOV", "CFT");
             typeRow.Children.Add(new System.Windows.Controls.TextBlock { Text = "Type:", VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 6, 0), FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)) });
+            if (cmbSystemType.Parent is System.Windows.Controls.Panel p1) p1.Children.Remove(cmbSystemType);
             typeRow.Children.Add(cmbSystemType);
 
             // separator
             typeRow.Children.Add(new System.Windows.Controls.Border { Width = 1, Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)), Margin = new WpfThickness(14, 2, 14, 2) });
 
             // ── Variant combo ────────────────────────────────────────────────────
-            cmbSystemVariant = MakeCompactComboBox(75);
+            if (firstLoad)
+                cmbSystemVariant = MakeCompactComboBox(75);
             typeRow.Children.Add(new System.Windows.Controls.TextBlock { Text = "Variant:", VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 6, 0), FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)) });
+            if (cmbSystemVariant.Parent is System.Windows.Controls.Panel p2) p2.Children.Remove(cmbSystemVariant);
             typeRow.Children.Add(cmbSystemVariant);
 
             // separator
             typeRow.Children.Add(new System.Windows.Controls.Border { Width = 1, Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)), Margin = new WpfThickness(14, 2, 14, 2) });
 
             // ── Aperture combo ───────────────────────────────────────────────────
-            cmbSystemAperture = MakeCompactComboBox(75, "8\"", "10\"", "12\"", "14\"", "16\"", "19\"", "21\"");
+            if (firstLoad)
+                cmbSystemAperture = MakeCompactComboBox(75, "8\"", "10\"", "12\"", "14\"", "16\"", "19\"", "21\"");
             typeRow.Children.Add(new System.Windows.Controls.TextBlock { Text = "Aperture:", VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 6, 0), FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)) });
+            if (cmbSystemAperture.Parent is System.Windows.Controls.Panel p3) p3.Children.Remove(cmbSystemAperture);
             typeRow.Children.Add(cmbSystemAperture);
 
             outerBorder.Child = typeRow;
@@ -435,8 +469,9 @@ public partial class MainWindow : Window
             System.Windows.Controls.Grid.SetColumnSpan(st, 2);
             orderFormGrid.Children.Add(st);
 
-            // Update Variant options when Type changes
-            cmbSystemType.SelectionChanged += (s, e) => RefreshVariantOptions();
+            // Wire up SelectionChanged only on first load
+            if (firstLoad)
+                cmbSystemType.SelectionChanged += (s, e) => RefreshVariantOptions();
             row++;
         }
 
@@ -486,9 +521,10 @@ public partial class MainWindow : Window
 
         int marketingRow = 0;
 
-        // Selling Price and Material Cost
+        // Selling Price, Material Cost and Monday # (CRM)
         AddFormField(marketingFormGrid, "Selling Price:", txtSellingPrice, marketingRow, 0, 1);
-        AddFormField(marketingFormGrid, "Material Cost:", txtMaterialCost, marketingRow++, 1, 1);
+        AddFormField(marketingFormGrid, "Material Cost:", txtMaterialCost, marketingRow, 1, 1);
+        AddFormField(marketingFormGrid, "Monday # (CRM):", txtMondayCRM, marketingRow++, 2, 1);
 
         // Project Hours and Penalties
         AddFormField(marketingFormGrid, "Project Hours:", txtProjectHours, marketingRow, 0, 1);
@@ -666,8 +702,9 @@ public partial class MainWindow : Window
             BorderThickness = new WpfThickness(1),
             CornerRadius = new CornerRadius(6),
             Background = System.Windows.Media.Brushes.White,
-            Padding = new WpfThickness(4),
-            MinHeight = 32 // Reduced from 36 to 32
+            Padding = new WpfThickness(4, 0, 4, 0),
+            Height = 32,
+            MaxHeight = 32
         };
 
         // Create new WrapPanel each time
@@ -690,7 +727,7 @@ public partial class MainWindow : Window
             Background = System.Windows.Media.Brushes.Transparent,
             MinWidth = 100,
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Padding = new WpfThickness(4, 4, 4, 4), // Reduced from 4,6,4,6
+            Padding = new WpfThickness(4, 0, 4, 0), // Reduced from 4,6,4,6
             FontSize = 13
         };
         txtParticipantsInput.TextChanged += ParticipantsTextBox_TextChanged;
@@ -2424,7 +2461,7 @@ public partial class MainWindow : Window
         // Title - compact
         var title = new System.Windows.Controls.TextBlock
         {
-            Text = "Questions",
+            Text = "Questions/Notes",
             FontSize = 20,
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
@@ -2433,38 +2470,27 @@ public partial class MainWindow : Window
         };
         stackPanel.Children.Add(title);
 
-        // PM Questions section - compact
-        var pmQuestionsLabel = new System.Windows.Controls.TextBlock
+        // PM Questions/Notes — outer border wrapping header + content (matches Targets style)
+        var pmOuterBorder = new WpfBorder
         {
-            Text = "PM Questions:",
-            FontSize = 14,
-            FontWeight = System.Windows.FontWeights.SemiBold,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(51, 65, 85)),
-            Margin = new WpfThickness(0, 0, 0, 8)
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(229, 231, 235)),
+            BorderThickness = new WpfThickness(1),
+            CornerRadius = new CornerRadius(8),
+            Margin = new WpfThickness(0, 0, 0, 16)
         };
-        stackPanel.Children.Add(pmQuestionsLabel);
-
-        // Add Question button - compact
-        var addButton = new System.Windows.Controls.Button
-        {
-            Content = "+ Add Question",
-            Margin = new WpfThickness(0, 0, 0, 8),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-            FontSize = 12
-        };
-        ApplyModernButtonStyle(addButton);
-        addButton.Padding = new WpfThickness(10, 2, 10, 2);
-        addButton.Click += AddQuestion_Click;
-        stackPanel.Children.Add(addButton);
+        var pmInnerStack = new System.Windows.Controls.StackPanel();
+        pmOuterBorder.Child = pmInnerStack;
+        pmInnerStack.Children.Add(MakeSectionHeader("📋", "PM Questions/Notes", "+ Add Question/Note", AddQuestion_Click));
 
         // Questions ItemsControl
         questionsItemsControl = new System.Windows.Controls.ItemsControl
         {
-            Margin = new WpfThickness(0, 0, 0, 16)
+            Margin = new WpfThickness(0)
         };
 
-        // Numbered row: "1. [TextBox] [🗑]"
+        // Numbered row: "1. [TextBox] [B] [🗑]"
         var dataTemplate = new System.Windows.DataTemplate();
         var rowFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.DockPanel));
         rowFactory.SetValue(System.Windows.Controls.DockPanel.MarginProperty, new WpfThickness(0, 0, 0, 6));
@@ -2494,9 +2520,14 @@ public partial class MainWindow : Window
         delFactory.AddHandler(System.Windows.Controls.Button.ClickEvent, new RoutedEventHandler(DeletePmQuestion_Click));
         rowFactory.AppendChild(delFactory);
 
+        var boldFactory = MakeBoldButtonFactory(ToggleBold_Click);
+        rowFactory.AppendChild(boldFactory);
+
         var tbFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
         tbFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty,
             new System.Windows.Data.Binding("Text") { Mode = System.Windows.Data.BindingMode.TwoWay });
+        tbFactory.SetBinding(System.Windows.Controls.TextBox.FontWeightProperty,
+            new System.Windows.Data.Binding("IsBold") { Converter = new BoldFontWeightConverter() });
         tbFactory.SetValue(System.Windows.Controls.TextBox.HeightProperty, 28.0);
         tbFactory.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 2, 8, 2));
         tbFactory.SetValue(System.Windows.Controls.TextBox.VerticalContentAlignmentProperty, System.Windows.VerticalAlignment.Center);
@@ -2511,40 +2542,37 @@ public partial class MainWindow : Window
         questionsItemsControl.ItemTemplate = dataTemplate;
         questionsItemsControl.ItemsSource = _questions;
 
-        stackPanel.Children.Add(questionsItemsControl);
-
-        // Marketing Questions section - compact
-        var marketingQuestionsLabel = new System.Windows.Controls.TextBlock
+        var pmContentBorder = new WpfBorder
         {
-            Text = "Marketing Questions:",
-            FontSize = 14,
-            FontWeight = System.Windows.FontWeights.SemiBold,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(51, 65, 85)),
-            Margin = new WpfThickness(0, 0, 0, 8)
+            Padding = new WpfThickness(16, 6, 16, 2)
         };
-        stackPanel.Children.Add(marketingQuestionsLabel);
+        var pmContentStack = new System.Windows.Controls.StackPanel();
+        pmContentBorder.Child = pmContentStack;
+        pmContentStack.Children.Add(questionsItemsControl);
+        pmInnerStack.Children.Add(pmContentBorder);
+        stackPanel.Children.Add(pmOuterBorder);
 
-        // Add Marketing Question button - compact
-        var addMarketingButton = new System.Windows.Controls.Button
+        // Marketing Questions/Notes — outer border wrapping header + content (matches Targets style)
+        var mktOuterBorder = new WpfBorder
         {
-            Content = "+ Add Question",
-            Margin = new WpfThickness(0, 0, 0, 8),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-            FontSize = 12
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(229, 231, 235)),
+            BorderThickness = new WpfThickness(1),
+            CornerRadius = new CornerRadius(8),
+            Margin = new WpfThickness(0, 0, 0, 16)
         };
-        ApplyModernButtonStyle(addMarketingButton);
-        addMarketingButton.Padding = new WpfThickness(10, 2, 10, 2);
-        addMarketingButton.Click += AddMarketingQuestion_Click;
-        stackPanel.Children.Add(addMarketingButton);
+        var mktInnerStack = new System.Windows.Controls.StackPanel();
+        mktOuterBorder.Child = mktInnerStack;
+        mktInnerStack.Children.Add(MakeSectionHeader("📣", "Marketing Questions/Notes", "+ Add Question/Note", AddMarketingQuestion_Click));
 
         // Marketing Questions ItemsControl
         marketingQuestionsItemsControl = new System.Windows.Controls.ItemsControl
         {
-            Margin = new WpfThickness(0, 0, 0, 16)
+            Margin = new WpfThickness(0)
         };
 
-        // Numbered row: "1. [TextBox] [🗑]"
+        // Numbered row: "1. [TextBox] [B] [🗑]"
         var marketingDataTemplate = new System.Windows.DataTemplate();
         var mRowFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.DockPanel));
         mRowFactory.SetValue(System.Windows.Controls.DockPanel.MarginProperty, new WpfThickness(0, 0, 0, 6));
@@ -2574,9 +2602,14 @@ public partial class MainWindow : Window
         mDelFactory.AddHandler(System.Windows.Controls.Button.ClickEvent, new RoutedEventHandler(DeleteMarketingQuestion_Click));
         mRowFactory.AppendChild(mDelFactory);
 
+        var mBoldFactory = MakeBoldButtonFactory(ToggleBold_Click);
+        mRowFactory.AppendChild(mBoldFactory);
+
         var mTbFactory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
         mTbFactory.SetBinding(System.Windows.Controls.TextBox.TextProperty,
             new System.Windows.Data.Binding("Text") { Mode = System.Windows.Data.BindingMode.TwoWay });
+        mTbFactory.SetBinding(System.Windows.Controls.TextBox.FontWeightProperty,
+            new System.Windows.Data.Binding("IsBold") { Converter = new BoldFontWeightConverter() });
         mTbFactory.SetValue(System.Windows.Controls.TextBox.HeightProperty, 28.0);
         mTbFactory.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 2, 8, 2));
         mTbFactory.SetValue(System.Windows.Controls.TextBox.VerticalContentAlignmentProperty, System.Windows.VerticalAlignment.Center);
@@ -2591,7 +2624,15 @@ public partial class MainWindow : Window
         marketingQuestionsItemsControl.ItemTemplate = marketingDataTemplate;
         marketingQuestionsItemsControl.ItemsSource = _marketingQuestions;
 
-        stackPanel.Children.Add(marketingQuestionsItemsControl);
+        var mktContentBorder = new WpfBorder
+        {
+            Padding = new WpfThickness(16, 6, 16, 2)
+        };
+        var mktContentStack = new System.Windows.Controls.StackPanel();
+        mktContentBorder.Child = mktContentStack;
+        mktContentStack.Children.Add(marketingQuestionsItemsControl);
+        mktInnerStack.Children.Add(mktContentBorder);
+        stackPanel.Children.Add(mktOuterBorder);
 
         panel.Children.Add(card);
     }
@@ -2654,6 +2695,134 @@ public partial class MainWindow : Window
         panel.Children.Add(card);
     }
 
+    // ── Creates a Targets-style section header bar (light-blue bg, title left, button right) ──
+    private WpfBorder MakeSectionHeader(string icon, string title, string buttonLabel, RoutedEventHandler buttonClick)
+    {
+        var container = new WpfBorder
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(239, 246, 255)),
+            Padding = new WpfThickness(16, 1, 16, 1),
+            CornerRadius = new CornerRadius(8, 8, 0, 0)
+        };
+
+        var grid = new System.Windows.Controls.Grid();
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+
+        var titlePanel = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+        titlePanel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = icon,
+            FontSize = 16,
+            Margin = new WpfThickness(0, 0, 8, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        });
+        titlePanel.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = title,
+            FontSize = 15,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(37, 99, 235)),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        });
+        System.Windows.Controls.Grid.SetColumn(titlePanel, 0);
+        grid.Children.Add(titlePanel);
+
+        var btn = new System.Windows.Controls.Button
+        {
+            Content = buttonLabel,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Padding = new WpfThickness(6, 2, 6, 2),
+            FontSize = 7,
+            FontWeight = System.Windows.FontWeights.Medium,
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(37, 99, 235)),
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new WpfThickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+        var btnTemplate = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+        var btnBorder = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        btnBorder.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        btnBorder.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(6));
+        btnBorder.SetValue(WpfBorder.PaddingProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.PaddingProperty));
+        var btnContent = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+        btnContent.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+        btnContent.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        btnBorder.AppendChild(btnContent);
+        btnTemplate.VisualTree = btnBorder;
+        btn.Template = btnTemplate;
+        btn.Click += buttonClick;
+        System.Windows.Controls.Grid.SetColumn(btn, 1);
+        grid.Children.Add(btn);
+
+        container.Child = grid;
+        return container;
+    }
+
+    // ── Creates a reusable Bold-toggle button factory ─────────────────────────
+    private System.Windows.FrameworkElementFactory MakeBoldButtonFactory(RoutedEventHandler clickHandler)
+    {
+        var factory = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.Button));
+        factory.SetValue(System.Windows.Controls.Button.ContentProperty, "B");
+        factory.SetValue(System.Windows.Controls.Button.FontSizeProperty, 13.0);
+        factory.SetValue(System.Windows.Controls.Button.FontWeightProperty, System.Windows.FontWeights.Bold);
+        factory.SetValue(System.Windows.Controls.Button.ForegroundProperty,
+            new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59)));
+        factory.SetValue(System.Windows.Controls.Button.WidthProperty, 28.0);
+        factory.SetValue(System.Windows.Controls.Button.HeightProperty, 28.0);
+        factory.SetValue(System.Windows.Controls.Button.CursorProperty, System.Windows.Input.Cursors.Hand);
+        factory.SetValue(System.Windows.Controls.Button.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        factory.SetValue(System.Windows.Controls.Button.MarginProperty, new WpfThickness(0, 0, 0, 0));
+        factory.SetValue(System.Windows.Controls.DockPanel.DockProperty, System.Windows.Controls.Dock.Right);
+        factory.SetBinding(System.Windows.Controls.Button.TagProperty, new System.Windows.Data.Binding());
+
+        // Custom ControlTemplate so WPF chrome doesn't swallow the "B" text or colours
+        var ct = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+        var borderFact = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        borderFact.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(3));
+        borderFact.SetValue(WpfBorder.BorderThicknessProperty, new WpfThickness(1));
+        borderFact.SetValue(WpfBorder.PaddingProperty, new WpfThickness(0));
+        borderFact.SetValue(WpfBorder.BorderBrushProperty,
+            new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(203, 213, 225)));
+
+        // Background: light-blue when IsBold=true, transparent otherwise
+        // Bind via TemplatedParent (the Button) → its Tag (the QuestionItem) → IsBold
+        borderFact.SetBinding(WpfBorder.BackgroundProperty,
+            new System.Windows.Data.Binding("Tag.IsBold")
+            {
+                RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent),
+                Converter = new BoldBackgroundConverter()
+            });
+
+        var cp = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+        cp.SetValue(System.Windows.Controls.TextBlock.TextProperty, "B");
+        cp.SetValue(System.Windows.Controls.TextBlock.FontSizeProperty, 16.0);
+        cp.SetValue(System.Windows.Controls.TextBlock.FontWeightProperty, System.Windows.FontWeights.Black);
+        cp.SetValue(System.Windows.Controls.TextBlock.ForegroundProperty,
+            new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59)));
+        cp.SetValue(System.Windows.Controls.TextBlock.HorizontalAlignmentProperty,
+            System.Windows.HorizontalAlignment.Center);
+        cp.SetValue(System.Windows.Controls.TextBlock.VerticalAlignmentProperty,
+            System.Windows.VerticalAlignment.Center);
+        cp.SetValue(System.Windows.Controls.TextBlock.LineHeightProperty, 16.0);
+        cp.SetValue(System.Windows.Controls.TextBlock.LineStackingStrategyProperty,
+            System.Windows.LineStackingStrategy.BlockLineHeight);
+        borderFact.AppendChild(cp);
+        ct.VisualTree = borderFact;
+        factory.SetValue(System.Windows.Controls.Control.TemplateProperty, ct);
+
+        factory.AddHandler(System.Windows.Controls.Button.ClickEvent, clickHandler);
+        return factory;
+    }
+
     private void AddNotesSubSection(
         System.Windows.Controls.StackPanel parent,
         ObservableCollection<QuestionItem> collection,
@@ -2709,9 +2878,14 @@ public partial class MainWindow : Window
         delFact.AddHandler(System.Windows.Controls.Button.ClickEvent, deleteHandler);
         rowFact.AppendChild(delFact);
 
+        var boldFact = MakeBoldButtonFactory(ToggleBold_Click);
+        rowFact.AppendChild(boldFact);
+
         var tbFact = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
         tbFact.SetBinding(System.Windows.Controls.TextBox.TextProperty,
             new System.Windows.Data.Binding("Text") { Mode = System.Windows.Data.BindingMode.TwoWay });
+        tbFact.SetBinding(System.Windows.Controls.TextBox.FontWeightProperty,
+            new System.Windows.Data.Binding("IsBold") { Converter = new BoldFontWeightConverter() });
         tbFact.SetValue(System.Windows.Controls.TextBox.HeightProperty, 28.0);
         tbFact.SetValue(System.Windows.Controls.TextBox.PaddingProperty, new WpfThickness(8, 2, 8, 2));
         tbFact.SetValue(System.Windows.Controls.TextBox.VerticalContentAlignmentProperty, System.Windows.VerticalAlignment.Center);
@@ -2727,6 +2901,13 @@ public partial class MainWindow : Window
         itemsControl.ItemsSource = collection;
 
         parent.Children.Add(itemsControl);
+    }
+
+    // ── Bold toggle handler (shared by all sections) ──────────────────────
+    private void ToggleBold_Click(object s, RoutedEventArgs e)
+    {
+        if (s is System.Windows.Controls.Button b && b.Tag is QuestionItem item)
+            item.IsBold = !item.IsBold;
     }
 
     // ── Marketing Notes handlers ──────────────────────────────────
@@ -3028,8 +3209,7 @@ public partial class MainWindow : Window
 
     private void InitializeNotes()
     {
-        _marketingNotes.Add(new QuestionItem { Text = "", Number = 1 });
-        _pmNotes.Add(new QuestionItem { Text = "", Number = 1 });
+        // No default notes — PM/Marketing notes start empty; only questions seed one row
     }
 
     private void RenumberCollection(ObservableCollection<QuestionItem> collection)
@@ -3274,7 +3454,7 @@ public partial class MainWindow : Window
                         text)));
         }
 
-        void ReplaceMarkerTableRows(string markerFragment, IEnumerable<string> lines)
+        void ReplaceMarkerTableRows(string markerFragment, IEnumerable<(string text, bool bold)> items_in)
         {
             // Find the paragraph inside the table cell that contains the marker
             var markerPara = body.Descendants(w + "p").FirstOrDefault(p =>
@@ -3286,7 +3466,7 @@ public partial class MainWindow : Window
             var templateRow = markerPara.Ancestors(w + "tr").FirstOrDefault();
             if (templateRow == null) return;
 
-            var items = lines.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+            var items = items_in.Where(s => !string.IsNullOrWhiteSpace(s.text)).ToList();
 
             if (items.Count == 0)
             {
@@ -3306,7 +3486,7 @@ public partial class MainWindow : Window
             }
             // Replace marker paragraph in content cell with item text
             markerPara.Elements(w + "r").Remove();
-            markerPara.Add(MakeDataRun(items[0]));
+            markerPara.Add(items[0].bold ? MakeBoldDataRun(items[0].text) : MakeDataRun(items[0].text));
 
             // Clone the template row for each additional item
             var insertAfter = templateRow;
@@ -3327,7 +3507,7 @@ public partial class MainWindow : Window
                 {
                     var contentPara = clonedCells[1].Element(w + "p");
                     contentPara?.Elements(w + "r").Remove();
-                    contentPara?.Add(MakeDataRun(items[i]));
+                    contentPara?.Add(items[i].bold ? MakeBoldDataRun(items[i].text) : MakeDataRun(items[i].text));
                 }
 
                 insertAfter.AddAfterSelf(clonedRow);
@@ -3350,6 +3530,32 @@ public partial class MainWindow : Window
         ReplacePlaceholder("Project Hours",  txtProjectHours.Text);
         ReplacePlaceholder("Selling Price",  txtSellingPrice.Text);
         ReplacePlaceholder("Material Cost",  txtMaterialCost.Text);
+        // The Monday # (CRM) placeholder is split across two red runs in the template.
+        // Find consecutive red runs whose combined text equals "Monday # (CRM):" and replace them.
+        {
+            string mondayValue = txtMondayCRM.Text;
+            bool mondayReplaced = false;
+            foreach (var container in allContainers)
+            {
+                var redRuns = container.Descendants(w + "r").Where(r => IsRedRun(r)).ToList();
+                for (int ri = 0; ri < redRuns.Count - 1; ri++)
+                {
+                    string t1 = RunText(redRuns[ri]);
+                    string t2 = RunText(redRuns[ri + 1]);
+                    string combined = t1 + t2;
+                    if (combined == "Monday # (CRM):" || combined == "Monday # (CRM)")
+                    {
+                        MakeBlackRun(redRuns[ri], mondayValue);
+                        redRuns[ri + 1].Remove();
+                        mondayReplaced = true;
+                        break;
+                    }
+                }
+                if (mondayReplaced) break;
+            }
+            if (!mondayReplaced)
+                ReplacePlaceholder("Monday # (CRM)", mondayValue);
+        }
         ReplacePlaceholder("Penalties",      txtPenalties.Text);
         ReplacePlaceholder("Reference Order", txtReferenceOrder.Text);
         InjectAfterLabelRun("D.O Rated:", chkDORated.IsChecked == true ? "Yes" : "No");
@@ -3675,10 +3881,10 @@ public partial class MainWindow : Window
         }
 
         // ── Section paragraph replacements ────────────────────────────────────
-        ReplaceMarkerTableRows("Start inserting PM questions",         _questions.Select(q => q.Text));
-        ReplaceMarkerTableRows("Start inserting Marketing questions",  _marketingQuestions.Select(q => q.Text));
-        ReplaceMarkerTableRows("Start inserting Marketing notes",      _marketingNotes.Select(n => n.Text));
-        ReplaceMarkerTableRows("Start inserting PM notes",            _pmNotes.Select(n => n.Text));
+        ReplaceMarkerTableRows("Start inserting PM questions",        _questions.Select(q => (q.Text, q.IsBold)));
+        ReplaceMarkerTableRows("Start inserting Marketing questions", _marketingQuestions.Select(q => (q.Text, q.IsBold)));
+        ReplaceMarkerTableRows("Start inserting Marketing notes",     _marketingNotes.Select(n => (n.Text, n.IsBold)));
+        ReplaceMarkerTableRows("Start inserting PM notes",           _pmNotes.Select(n => (n.Text, n.IsBold)));
 
         // ── Save ──────────────────────────────────────────────────────────────
         var settings = new System.Xml.XmlWriterSettings
