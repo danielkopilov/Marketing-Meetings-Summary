@@ -70,7 +70,10 @@ public class TemplateData
     public string OrderNumber { get; set; } = "";
     public string CustomerName { get; set; } = "";
     public string FinalCustomer { get; set; } = "";
-    public string ProjectType { get; set; } = "";
+    public string ProjectType { get; set; } = "";   // legacy alias – mirrors SystemType
+    public string SystemType { get; set; } = "";
+    public string SystemVariant { get; set; } = "";
+    public string SystemAperture { get; set; } = "";
     public string PakaNumber { get; set; } = "";
     public string ReferenceOrder { get; set; } = "";
     public string DeliveryDate { get; set; } = "";
@@ -183,7 +186,9 @@ public partial class MainWindow : Window
     private System.Windows.Controls.TextBox txtOrderNumber = new();
     private System.Windows.Controls.TextBox txtCustomerName = new();
     private System.Windows.Controls.TextBox txtFinalCustomer = new();
-    private System.Windows.Controls.TextBox txtProjectType = new();
+    private System.Windows.Controls.ComboBox cmbSystemType    = new();
+    private System.Windows.Controls.ComboBox cmbSystemVariant = new();
+    private System.Windows.Controls.ComboBox cmbSystemAperture = new();
     private System.Windows.Controls.TextBox txtPakaNumber = new();
     private System.Windows.Controls.DatePicker dpDeliveryDate = new();
     private System.Windows.Controls.DatePicker dpDesignDueDate = new();
@@ -371,7 +376,69 @@ public partial class MainWindow : Window
 
         // Agent and Project Type side by side
         AddFormField(orderFormGrid, "Territory:", txtFinalCustomer, row, 0, 1);
-        AddFormField(orderFormGrid, "Project Type:", txtProjectType, row++, 1, 2);
+
+        // System Type — three inline combo boxes spanning 2 columns, wrapped in rounded border
+        {
+            orderFormGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            var st = new System.Windows.Controls.StackPanel { Margin = new WpfThickness(0, 0, 0, 8) };
+            st.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = "System Type:",
+                FontSize = 12,
+                FontWeight = System.Windows.FontWeights.Medium,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)),
+                Margin = new WpfThickness(0, 0, 0, 4)
+            });
+
+            // Rounded border wrapping all three combos — matches text-field style
+            var outerBorder = new WpfBorder
+            {
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)),
+                BorderThickness = new WpfThickness(1),
+                CornerRadius = new CornerRadius(6),
+                Background = System.Windows.Media.Brushes.White,
+                Padding = new WpfThickness(6, 2, 6, 2)
+            };
+
+            var typeRow = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
+            };
+
+            // ── Type combo ───────────────────────────────────────────────────────
+            cmbSystemType = MakeCompactComboBox(95, "METS", "ILET", "WFOV", "CFT");
+            typeRow.Children.Add(new System.Windows.Controls.TextBlock { Text = "Type:", VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 6, 0), FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)) });
+            typeRow.Children.Add(cmbSystemType);
+
+            // separator
+            typeRow.Children.Add(new System.Windows.Controls.Border { Width = 1, Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)), Margin = new WpfThickness(14, 2, 14, 2) });
+
+            // ── Variant combo ────────────────────────────────────────────────────
+            cmbSystemVariant = MakeCompactComboBox(75);
+            typeRow.Children.Add(new System.Windows.Controls.TextBlock { Text = "Variant:", VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 6, 0), FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)) });
+            typeRow.Children.Add(cmbSystemVariant);
+
+            // separator
+            typeRow.Children.Add(new System.Windows.Controls.Border { Width = 1, Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240)), Margin = new WpfThickness(14, 2, 14, 2) });
+
+            // ── Aperture combo ───────────────────────────────────────────────────
+            cmbSystemAperture = MakeCompactComboBox(75, "8\"", "10\"", "12\"", "14\"", "16\"", "19\"", "21\"");
+            typeRow.Children.Add(new System.Windows.Controls.TextBlock { Text = "Aperture:", VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 6, 0), FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)) });
+            typeRow.Children.Add(cmbSystemAperture);
+
+            outerBorder.Child = typeRow;
+            st.Children.Add(outerBorder);
+
+            System.Windows.Controls.Grid.SetRow(st, row);
+            System.Windows.Controls.Grid.SetColumn(st, 1);
+            System.Windows.Controls.Grid.SetColumnSpan(st, 2);
+            orderFormGrid.Children.Add(st);
+
+            // Update Variant options when Type changes
+            cmbSystemType.SelectionChanged += (s, e) => RefreshVariantOptions();
+            row++;
+        }
 
         // Paka Number, Delivery Date, Design Due Date (all side by side)
         AddFormField(orderFormGrid, "Paka Number:", txtPakaNumber, row, 0, 1);
@@ -522,6 +589,10 @@ public partial class MainWindow : Window
             borderFactory.AppendChild(scrollFactory);
             template.VisualTree = borderFactory;
             textBox.Template = template;
+        }
+        else if (control is System.Windows.Controls.DatePicker datePicker)
+        {
+            datePicker.Style = (System.Windows.Style)FindResource("RoundedDatePicker");
         }
     }
 
@@ -2281,6 +2352,18 @@ public partial class MainWindow : Window
         return cb;
     }
 
+    private System.Windows.Controls.ComboBox MakeCompactComboBox(int width, params string[] items)
+    {
+        var cb = new System.Windows.Controls.ComboBox
+        {
+            Width = width,
+            Style = (System.Windows.Style)FindResource("CompactRoundedComboBox")
+        };
+        foreach (var item in items)
+            cb.Items.Add(item);
+        return cb;
+    }
+
     private System.Windows.Controls.ComboBox MakeComboWrapper(System.Windows.Controls.ComboBox cb, int width)
     {
         cb.Width = width;
@@ -3257,7 +3340,13 @@ public partial class MainWindow : Window
         ReplacePlaceholder("Customer Name",  txtCustomerName.Text);
         ReplacePlaceholder("Territory",      txtFinalCustomer.Text);
         ReplacePlaceholder("Paka Number",    txtPakaNumber.Text);
-        ReplacePlaceholder("Project Type",   txtProjectType.Text);
+        var systemTypeStr = string.Join(" ", new[]
+        {
+            cmbSystemType.SelectedItem?.ToString() ?? "",
+            cmbSystemVariant.SelectedItem?.ToString() ?? "",
+            cmbSystemAperture.SelectedItem?.ToString() ?? ""
+        }.Where(s => !string.IsNullOrEmpty(s)));
+        ReplacePlaceholder("Project Type",   systemTypeStr);
         ReplacePlaceholder("Project Hours",  txtProjectHours.Text);
         ReplacePlaceholder("Selling Price",  txtSellingPrice.Text);
         ReplacePlaceholder("Material Cost",  txtMaterialCost.Text);
@@ -3619,8 +3708,9 @@ public partial class MainWindow : Window
             AddParagraph(body, headerText, 24, true);
 
             // System Type
-            if (!string.IsNullOrWhiteSpace(txtProjectType.Text))
-                AddParagraph(body, txtProjectType.Text, 24, true);
+            var sysTypePh = string.Join(" ", new[] { cmbSystemType.SelectedItem?.ToString() ?? "", cmbSystemVariant.SelectedItem?.ToString() ?? "", cmbSystemAperture.SelectedItem?.ToString() ?? "" }.Where(s => !string.IsNullOrEmpty(s)));
+            if (!string.IsNullOrWhiteSpace(sysTypePh))
+                AddParagraph(body, sysTypePh, 24, true);
 
             // Dates
             string datesText = "";
@@ -3831,7 +3921,10 @@ public partial class MainWindow : Window
             OrderNumber        = txtOrderNumber.Text,
             CustomerName       = txtCustomerName.Text,
             FinalCustomer      = txtFinalCustomer.Text,
-            ProjectType        = txtProjectType.Text,
+            SystemType         = cmbSystemType.SelectedItem?.ToString() ?? "",
+            SystemVariant      = cmbSystemVariant.SelectedItem?.ToString() ?? "",
+            SystemAperture     = cmbSystemAperture.SelectedItem?.ToString() ?? "",
+            ProjectType        = cmbSystemType.SelectedItem?.ToString() ?? "",
             PakaNumber         = txtPakaNumber.Text,
             ReferenceOrder     = txtReferenceOrder.Text,
             DeliveryDate       = dpDeliveryDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
@@ -3939,12 +4032,35 @@ public partial class MainWindow : Window
 
     private TemplateData? _pendingTemplateConfig;
 
+    private void RefreshVariantOptions()
+    {
+        var saved = cmbSystemVariant.SelectedItem?.ToString() ?? "";
+        cmbSystemVariant.Items.Clear();
+        string[]? variants = cmbSystemType.SelectedItem?.ToString() switch
+        {
+            "METS" => new[] { "VS", "S", "L", "VL" },
+            "ILET" => new[] { "4", "5", "6" },
+            "WFOV" => new[] { "VS", "S", "L", "VL" },
+            "CFT"  => new[] { "VS", "S", "L", "VL" },
+            _ => null
+        };
+        if (variants != null)
+            foreach (var v in variants) cmbSystemVariant.Items.Add(v);
+        if (!string.IsNullOrEmpty(saved) && cmbSystemVariant.Items.Contains(saved))
+            cmbSystemVariant.SelectedItem = saved;
+    }
+
     private void ApplyTemplateData(TemplateData data)
     {
         txtOrderNumber.Text    = data.OrderNumber;
         txtCustomerName.Text   = data.CustomerName;
         txtFinalCustomer.Text  = data.FinalCustomer;
-        txtProjectType.Text    = data.ProjectType;
+        // Restore System Type combos (support both new and legacy saved data)
+        var sysType = !string.IsNullOrEmpty(data.SystemType) ? data.SystemType : data.ProjectType;
+        RestoreComboSelection(cmbSystemType, sysType);
+        RefreshVariantOptions();
+        RestoreComboSelection(cmbSystemVariant, data.SystemVariant);
+        RestoreComboSelection(cmbSystemAperture, data.SystemAperture);
         txtPakaNumber.Text     = data.PakaNumber;
         txtReferenceOrder.Text = data.ReferenceOrder;
         txtSellingPrice.Text   = data.SellingPrice;
@@ -4078,7 +4194,7 @@ public partial class MainWindow : Window
         var win = new SendSummaryWindow(
             txtOrderNumber.Text.Trim(),
             txtCustomerName.Text.Trim(),
-            txtProjectType.Text.Trim(),
+            string.Join(" ", new[] { cmbSystemType.SelectedItem?.ToString() ?? "", cmbSystemVariant.SelectedItem?.ToString() ?? "", cmbSystemAperture.SelectedItem?.ToString() ?? "" }.Where(s => !string.IsNullOrEmpty(s))),
             new System.Collections.Generic.List<string>(selectedParticipants),
             _lastExportedPath ?? "");
         win.Owner = this;

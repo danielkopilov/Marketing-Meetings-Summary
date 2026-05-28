@@ -8,8 +8,7 @@
     ".NETCoreApp,Version=v10.0": {
       "Marketing Meetings Summary/1.0.0": {
         "dependencies": {
-          "DocumentFormat.OpenXml": "3.2.0",
-          "Microsoft.Office.Interop.Outlook": "15.0.4797.1003"
+          "DocumentFormat.OpenXml": "3.2.0"
         },
         "runtime": {
           "Marketing Meetings Summary.dll": {}
@@ -31,14 +30,6 @@
           "lib/net8.0/DocumentFormat.OpenXml.Framework.dll": {
             "assemblyVersion": "3.2.0.0",
             "fileVersion": "3.2.0.0"
-          }
-        }
-      },
-      "Microsoft.Office.Interop.Outlook/15.0.4797.1003": {
-        "runtime": {
-          "lib/net20/Microsoft.Office.Interop.Outlook.dll": {
-            "assemblyVersion": "15.0.0.0",
-            "fileVersion": "15.0.4797.1003"
           }
         }
       }
@@ -63,13 +54,6 @@
       "sha512": "sha512-e1neOKqRnSHUom4JQEorAoZ67aiJOp6+Xzsu0fc6IYfFcgQn6roo+w6i2w//N2u/5ilEfvLr35bNO9zaIN7r7g==",
       "path": "documentformat.openxml.framework/3.2.0",
       "hashPath": "documentformat.openxml.framework.3.2.0.nupkg.sha512"
-    },
-    "Microsoft.Office.Interop.Outlook/15.0.4797.1003": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-7tvZ8vtSemSxJxrarL/i3oYuha4ElXxvrjFfuWL0s5vmKVDHXjY72+Ed6S4xCPH+qDGEZYd49ObdGT7PC8BegQ==",
-      "path": "microsoft.office.interop.outlook/15.0.4797.1003",
-      "hashPath": "microsoft.office.interop.outlook.15.0.4797.1003.nupkg.sha512"
     }
   }
 }

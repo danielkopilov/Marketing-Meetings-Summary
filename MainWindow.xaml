@@ -55,6 +55,186 @@
             </Setter>
         </Style>
 
+        <!-- Rounded DatePicker matching text-field look -->
+        <Style x:Key="RoundedDatePicker" TargetType="DatePicker">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePicker">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="28"/>
+                                </Grid.ColumnDefinitions>
+                                <DatePickerTextBox x:Name="PART_TextBox"
+                                                   Grid.Column="0"
+                                                   BorderThickness="0"
+                                                   Background="Transparent"
+                                                   Padding="8,0,2,0"
+                                                   FontSize="12"
+                                                   FontWeight="Normal"
+                                                   Foreground="{TemplateBinding Foreground}"
+                                                   VerticalAlignment="Center"
+                                                   VerticalContentAlignment="Center"/>
+                                <Button x:Name="PART_Button"
+                                        Grid.Column="1"
+                                        Focusable="False"
+                                        BorderThickness="0"
+                                        Background="Transparent"
+                                        VerticalAlignment="Stretch"
+                                        HorizontalAlignment="Stretch">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="Transparent">
+                                                <Canvas Width="14" Height="14"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center">
+                                                    <!-- Calendar outline -->
+                                                    <Rectangle Canvas.Left="0" Canvas.Top="2"
+                                                               Width="14" Height="12"
+                                                               Stroke="#64748B" StrokeThickness="1"
+                                                               Fill="White" RadiusX="1" RadiusY="1"/>
+                                                    <!-- Header band -->
+                                                    <Rectangle Canvas.Left="0" Canvas.Top="2"
+                                                               Width="14" Height="4"
+                                                               Fill="#94A3B8" RadiusX="1" RadiusY="1"/>
+                                                    <!-- Cover bottom of header radius -->
+                                                    <Rectangle Canvas.Left="0" Canvas.Top="4"
+                                                               Width="14" Height="2"
+                                                               Fill="#94A3B8"/>
+                                                    <!-- Left tab -->
+                                                    <Rectangle Canvas.Left="3" Canvas.Top="0"
+                                                               Width="2" Height="5"
+                                                               Fill="#64748B" RadiusX="1" RadiusY="1"/>
+                                                    <!-- Right tab -->
+                                                    <Rectangle Canvas.Left="9" Canvas.Top="0"
+                                                               Width="2" Height="5"
+                                                               Fill="#64748B" RadiusX="1" RadiusY="1"/>
+                                                </Canvas>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Popup x:Name="PART_Popup"
+                                       AllowsTransparency="True"
+                                       Placement="Bottom"
+                                       StaysOpen="False"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#93C5FD"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#3B82F6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Compact rounded ComboBox matching text-field look (used for System Type row) -->
+        <Style x:Key="CompactRoundedComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="6,2,6,2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{TemplateBinding SelectionBoxItem}"
+                                               Margin="{TemplateBinding Padding}"
+                                               Padding="0"
+                                               FontSize="{TemplateBinding FontSize}"
+                                               FontWeight="Normal"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               IsHitTestVisible="False"/>
+                                    <Path Grid.Column="1"
+                                          Data="M 0 0 L 4 4 L 8 0 Z"
+                                          Fill="#64748B"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="0,1,4,0"/>
+                                    <ToggleButton Grid.Column="0"
+                                                  Grid.ColumnSpan="2"
+                                                  BorderThickness="0"
+                                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  Focusable="False">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   Placement="Bottom"
+                                   PopupAnimation="Slide">
+                                <Border Background="White"
+                                        BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="2"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border.Effect>
+                                        <DropShadowEffect ShadowDepth="2" BlurRadius="8" Opacity="0.12" Color="#000000"/>
+                                    </Border.Effect>
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#93C5FD"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#3B82F6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- White ComboBox Style with full ControlTemplate -->
         <Style x:Key="WhiteComboBox" TargetType="ComboBox">
             <Setter Property="Background" Value="White"/>
@@ -372,89 +552,97 @@
 
                 <!-- Buttons block:
                      Left col:  countdown + Load Template
-                     Right col: Export Summary (top) + Send Summary (bottom) — same width, minimal gap -->
+                     Right col: Export Summary (top) + Send Summary (bottom, same row as Load Template) -->
                 <Grid Grid.Column="2" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="1"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="0"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Left col: countdown above Load Template -->
-                    <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
-                        <TextBlock x:Name="txtAutoSaveCountdown"
-                                   Text="Automatic save in: 1:00"
-                                   FontSize="8"
-                                   FontWeight="Normal"
-                                   Foreground="#6B7280"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,0,0,3"/>
-                        <Button Content="📂 Load Template"
-                                Click="LoadTemplateButton_Click"
-                                HorizontalAlignment="Stretch"
-                                Padding="8,6,8,6"
-                                FontSize="10"
-                                FontWeight="SemiBold"
-                                Cursor="Hand"
-                                Foreground="White"
-                                BorderThickness="0"
-                                Background="#16A34A">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            CornerRadius="10"
-                                            Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                    </StackPanel>
+                    <!-- Countdown above Load Template -->
+                    <TextBlock x:Name="txtAutoSaveCountdown"
+                               Grid.Row="0" Grid.Column="0"
+                               Text="Automatic save in: 1:00"
+                               FontSize="8"
+                               FontWeight="Normal"
+                               Foreground="#6B7280"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,3"/>
 
-                    <!-- Right col: Export Summary on top, Send Summary below, same * width, 4px gap -->
-                    <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Bottom">
-                        <Button Content="📄 Export Summary"
-                                Click="btnGenerateDocument_Click"
-                                HorizontalAlignment="Stretch"
-                                Padding="8,6,8,6"
-                                FontSize="10"
-                                FontWeight="SemiBold"
-                                Cursor="Hand"
-                                Foreground="White"
-                                BorderThickness="0"
-                                Background="#3B82F6">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            CornerRadius="10"
-                                            Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <Button Content="✉️ Send Summary"
-                                Click="SendSummaryButton_Click"
-                                HorizontalAlignment="Stretch"
-                                Margin="0,4,0,0"
-                                Padding="8,6,8,6"
-                                FontSize="10"
-                                FontWeight="SemiBold"
-                                Cursor="Hand"
-                                Foreground="White"
-                                BorderThickness="0"
-                                Background="#7C3AED">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            CornerRadius="10"
-                                            Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                    </StackPanel>
+                    <!-- Export Summary — top right only -->
+                    <Button Content="📄 Export Summary"
+                            Grid.Row="0" Grid.Column="2"
+                            Click="btnGenerateDocument_Click"
+                            HorizontalAlignment="Stretch"
+                            Padding="8,6,8,6"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Background="#3B82F6">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="10"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <!-- Load Template - bottom left (unchanged) -->
+                    <Button Content="📂 Load Template"
+                            Grid.Row="2" Grid.Column="0"
+                            Click="LoadTemplateButton_Click"
+                            HorizontalAlignment="Stretch"
+                            Padding="8,6,8,6"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Background="#16A34A">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="10"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <!-- Send Summary - bottom right, same row as Load Template -->
+                    <Button Content="✉️ Send Summary"
+                            Grid.Row="2" Grid.Column="2"
+                            Click="SendSummaryButton_Click"
+                            HorizontalAlignment="Stretch"
+                            Padding="8,6,8,6"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Background="#7C3AED">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="10"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
 
                 </Grid>
             </Grid>

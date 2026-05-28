@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
-using Outlook = Microsoft.Office.Interop.Outlook;
 using WpfBorder = System.Windows.Controls.Border;
 using WpfThickness = System.Windows.Thickness;
 
@@ -257,7 +256,7 @@ public class SendSummaryWindow : Window
         });
         footerNote.Children.Add(new TextBlock
         {
-            Text       = "Outlook will open with this draft ready to review before sending.",
+            Text       = "The email will be sent via Outlook on your behalf.",
             FontSize   = 11,
             Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)),
             VerticalAlignment = VerticalAlignment.Center
@@ -275,7 +274,7 @@ public class SendSummaryWindow : Window
         cancelBtn.Click += (s, e) => { ShouldSend = false; Close(); };
         btnRow.Children.Add(cancelBtn);
 
-        var sendBtn = MakeActionButton("✉️  Open in Outlook", "#2563EB");
+        var sendBtn = MakeActionButton("✉️  Send Email", "#2563EB");
         sendBtn.Height = 28;
         sendBtn.Click += SendButton_Click;
         btnRow.Children.Add(sendBtn);
@@ -481,7 +480,7 @@ CI Systems – Marketing Team";
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"Could not open Outlook.\n\nPlease make sure Outlook is installed.\n\nDetails: {ex.Message}",
+                $"Could not send via Outlook.\n\nPlease make sure Outlook is installed and configured.\n\nDetails: {ex.Message}",
                 "Outlook Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -493,44 +492,41 @@ CI Systems – Marketing Team";
         IntPtr pvReserved,
         [MarshalAs(UnmanagedType.IUnknown)] out object ppunk);
 
-    // Keep static refs so GC doesn't release COM objects before the user clicks Send.
-    private static Outlook.Application? _outlookApp;
-    private static Outlook.MailItem?    _pendingMail;
-
     private static void SendViaOutlook(string to, string subject, string body, string attachmentPath)
     {
-        // Get or create the Outlook Application COM object.
-        // For classic Outlook (2016/2019/2021): GetActiveObject returns the running instance.
-        // For new Outlook (Microsoft 365): GetActiveObject fails; Activator.CreateInstance
-        //   routes through the COM registration and attaches to the running new Outlook.
-        Outlook.Application? app = null;
+        // Use late binding (dynamic) so no Office PIA / interop assembly is required at runtime.
+        // Works with classic Outlook 2016/2019/2021 and new Microsoft 365 Outlook.
+        dynamic? app = null;
 
-        // Try ROT first
+        // Try to get the already-running instance first.
         try
         {
             var outlookType = Type.GetTypeFromProgID("Outlook.Application");
             if (outlookType != null)
             {
                 int hr = GetActiveObject(outlookType.GUID, IntPtr.Zero, out object runningObj);
-                if (hr == 0) app = (Outlook.Application)runningObj;
+                if (hr == 0) app = runningObj;
             }
         }
         catch { }
 
-        // Fallback: create via registered COM server (attaches to running instance)
+        // Fallback: create / attach via the COM registration.
         if (app == null)
         {
-            try { app = new Outlook.Application(); }
+            try
+            {
+                var outlookType = Type.GetTypeFromProgID("Outlook.Application");
+                if (outlookType != null)
+                    app = Activator.CreateInstance(outlookType);
+            }
             catch { }
         }
 
         if (app == null)
             throw new InvalidOperationException("Could not connect to Outlook. Make sure Outlook is installed and running.");
 
-        _outlookApp = app;
-
-        Outlook.MailItem mail = (Outlook.MailItem)app.CreateItem(Outlook.OlItemType.olMailItem);
-        _pendingMail = mail;
+        // olMailItem = 0
+        dynamic mail = app.CreateItem(0);
 
         foreach (var addr in to.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
         {
@@ -544,10 +540,12 @@ CI Systems – Marketing Team";
         mail.HTMLBody = BuildHtmlBody(body);
 
         if (!string.IsNullOrEmpty(attachmentPath) && File.Exists(attachmentPath))
-            mail.Attachments.Add(attachmentPath, Outlook.OlAttachmentType.olByValue, 1,
-                                 Path.GetFileName(attachmentPath));
+        {
+            // olByValue = 1
+            mail.Attachments.Add(attachmentPath, 1, 1, Path.GetFileName(attachmentPath));
+        }
 
-        mail.Display(false);   // opens compose window; user reviews and clicks Send in Outlook
+        mail.Send();
     }
 
     // Wraps the email body in LTR HTML so Outlook never auto-flips to RTL
