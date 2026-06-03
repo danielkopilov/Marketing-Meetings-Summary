@@ -126,10 +126,18 @@ public class TemplateData
     public string GimbalAccuracy { get; set; } = "";
     public bool GimbalJoystick { get; set; }
     public bool LosHalogen { get; set; }
+    public bool SourceStageManual { get; set; }
+    public bool XyStageManual { get; set; }
     public string FrameGrabber1 { get; set; } = "";
     public string FrameGrabber2 { get; set; } = "";
     public string FrameGrabber3 { get; set; } = "";
     public string FrameGrabber4 { get; set; } = "";
+    public bool RackmountMonitorArm { get; set; }
+    public string RackmountHeight { get; set; } = "";
+    public string OpticalTableWidth { get; set; } = "";
+    public string OpticalTableLength { get; set; } = "";
+    public string OpticalTableHeight { get; set; } = "";
+    public bool OpticalTableActive { get; set; }
     public List<TargetItem> Targets { get; set; } = new();
     public List<string> PmQuestions { get; set; } = new();
     public List<string> MarketingQuestions { get; set; } = new();
@@ -164,7 +172,8 @@ public partial class MainWindow : Window
         "Focus Stage",
         "VRS",
         "Gimbal",
-        "Frame Grabbers"
+        "Frame Grabbers",
+        "Optical Table"
     };
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
@@ -194,6 +203,16 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox3;
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox4;
     private WpfCheckBox? _losHalogenCheckBox;
+    private WpfCheckBox? _sourceStageManualCheckBox;
+    private WpfCheckBox? _xyStageManualCheckBox;
+    private WpfCheckBox? _rackmountMonitorArmCheckBox;
+    private System.Windows.Controls.TextBox? _rackmountHeightTextBox;
+    private System.Windows.Controls.TextBlock? _lblRackmountHeight, _lblRackmountU;
+    private System.Windows.Controls.TextBox? _opticalTableWidthTextBox;
+    private System.Windows.Controls.TextBox? _opticalTableLengthTextBox;
+    private System.Windows.Controls.TextBox? _opticalTableHeightTextBox;
+    private WpfCheckBox? _opticalTableActiveCheckBox;
+    private System.Windows.Controls.TextBlock? _lblOTWidth, _lblOTLength, _lblOTHeight;
     // Inline label references for enable/disable
     private System.Windows.Controls.TextBlock? _lblBBType, _lblBBSize;
     private System.Windows.Controls.TextBlock? _lblISAperture;
@@ -272,6 +291,7 @@ public partial class MainWindow : Window
         try
         {
             LoadSection(0);
+            UpdateBlockDiagramButtonState();
         }
         catch (Exception ex)
         {
@@ -314,6 +334,15 @@ public partial class MainWindow : Window
         selectedButton.Foreground = System.Windows.Media.Brushes.White;
     }
 
+    private void UpdateBlockDiagramButtonState()
+    {
+        var btn = this.FindName("btnBlockDiagram") as System.Windows.Controls.Button;
+        if (btn == null) return;
+        bool anyChecked = _configCheckBoxes.Values.Any(cb => cb.IsChecked == true);
+        btn.IsEnabled = anyChecked;
+        btn.Opacity = anyChecked ? 1.0 : 0.4;
+    }
+
     private void LoadSection(int sectionIndex)
     {
         try
@@ -341,6 +370,9 @@ public partial class MainWindow : Window
                     break;
                 case 3: // Actions
                     LoadActionsSection(panel);
+                    break;
+                case 4: // Block Diagram
+                    LoadBlockDiagramSection(panel);
                     break;
             }
         }
@@ -1129,10 +1161,18 @@ public partial class MainWindow : Window
         var savedGimbalAccuracy = _gimbalAccuracyComboBox?.SelectedItem?.ToString();
         var savedGimbalJoystick = _gimbalJoystickCheckBox?.IsChecked ?? false;
         var savedLosHalogen     = _losHalogenCheckBox?.IsChecked ?? false;
+        var savedSourceStageManual = _sourceStageManualCheckBox?.IsChecked ?? false;
+        var savedXyStageManual     = _xyStageManualCheckBox?.IsChecked ?? false;
         var savedFG1            = _frameGrabbersComboBox?.SelectedItem?.ToString();
         var savedFG2            = _frameGrabbersComboBox2?.SelectedItem?.ToString();
         var savedFG3            = _frameGrabbersComboBox3?.SelectedItem?.ToString();
         var savedFG4            = _frameGrabbersComboBox4?.SelectedItem?.ToString();
+        var savedRackmountMonitorArm = _rackmountMonitorArmCheckBox?.IsChecked ?? false;
+        var savedRackmountHeight    = _rackmountHeightTextBox?.Text;
+        var savedOTWidth            = _opticalTableWidthTextBox?.Text;
+        var savedOTLength           = _opticalTableLengthTextBox?.Text;
+        var savedOTHeight           = _opticalTableHeightTextBox?.Text;
+        var savedOTActive           = _opticalTableActiveCheckBox?.IsChecked ?? false;
 
         // Main Configuration Card - matching the image exactly
         var card = new WpfBorder
@@ -1525,7 +1565,7 @@ public partial class MainWindow : Window
 
         // Grid layout:
         // col0 = 190px  (left checkboxes: Source Stage, CTE, XY Stage + inline rows — fixed so spacing equals col1/col2)
-        // col1 = 190px  (rows 0-2: Rackmount/Device Center/Power Meter  |  rows 3/4/6: inline dim label)
+        // col1 = 190px  (rows 0-2: Device Center/Power Meter  |  rows 3/4/6: inline dim label)
         // col2 = 190px  (rows 0-2: Manual Choke/LOS alignment target/Energy Meter  |  rows 3/4/6: inline textbox)
         // col3 = Auto   (inline unit: [KG], [m], [Inches] — empty in rows 0-2)
         var componentsGrid = new System.Windows.Controls.Grid();
@@ -1534,27 +1574,97 @@ public partial class MainWindow : Window
         componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(190) });  // col2
         componentsGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });       // col3 unit
 
-        // Rows 0-2: the 9 plain checkboxes in a 3-column sub-arrangement using col0, col4, col5
-        string[] top9 = { "Source Stage", "Rackmount", "Manual Choke",
-                           "CTE", "Device Center", "LOS alignment target",
-                           "XY Stage", "Power Meter", "Energy Meter" };
+        // Rows 0-2: 8 plain checkboxes — Rackmount is placed separately below Optical Table
+        // Layout: row0: Source Stage(col0), Device Center(col1), Manual Choke(col2)
+        //         row1: CTE(col0), Power Meter(col1), LOS alignment target(col2)
+        //         row2: XY Stage(col0), Energy Meter(col1)
+        string[] top8      = { "Source Stage", "Device Center", "Manual Choke",
+                                "CTE",          "Power Meter",   "LOS alignment target",
+                                "XY Stage",     "Energy Meter" };
+        int[]    top8Cols  = { 0, 1, 2,  0, 1, 2,  0, 1 };
+        int[]    top8Rows  = { 0, 0, 0,  1, 1, 1,  2, 2 };
 
-        // Column mapping: left col → grid col0, middle col → grid col1, right col → grid col2
-        int[] top9GridCols = { 0, 1, 2 };
+        // Ensure 3 row definitions for rows 0-2
+        componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+        componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+        componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
 
-        for (int i = 0; i < top9.Length; i++)
+        for (int i = 0; i < top8.Length; i++)
         {
-            if (i % 3 == 0)
-                componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
-
-            var cb = _configCheckBoxes[top9[i]];
+            var cb = _configCheckBoxes[top8[i]];
             DetachCheckBox(cb);
             StyleSysCheckBox(cb);
             cb.Margin = new WpfThickness(0, 0, 0, 0);
 
-            var cbw = WrapCheckBoxWithNoteButton(cb, top9[i]);
+            var cbw = WrapCheckBoxWithNoteButton(cb, top8[i]);
 
-            if (top9[i] == "LOS alignment target")
+            if (top8[i] == "Source Stage")
+            {
+                _sourceStageManualCheckBox = new WpfCheckBox
+                {
+                    Content = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "Manual",
+                        FontSize = 11,
+                        FontWeight = System.Windows.FontWeights.Normal,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        Margin = new WpfThickness(2, 0, 0, 0)
+                    },
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(6, 0, 0, 0),
+                    Padding = new WpfThickness(0),
+                    LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+                };
+                _sourceStageManualCheckBox.IsEnabled = false;
+                var ssRow = new System.Windows.Controls.StackPanel
+                {
+                    Orientation = System.Windows.Controls.Orientation.Horizontal,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(0, 0, 0, 14)
+                };
+                ssRow.Children.Add(cbw);
+                ssRow.Children.Add(_sourceStageManualCheckBox);
+                System.Windows.Controls.Grid.SetRow(ssRow, top8Rows[i]);
+                System.Windows.Controls.Grid.SetColumn(ssRow, top8Cols[i]);
+                componentsGrid.Children.Add(ssRow);
+                var ssCb = _configCheckBoxes["Source Stage"];
+                ssCb.Checked   += (s, e) => { _sourceStageManualCheckBox.IsEnabled = true; };
+                ssCb.Unchecked += (s, e) => { _sourceStageManualCheckBox.IsEnabled = false; };
+            }
+            else if (top8[i] == "XY Stage")
+            {
+                _xyStageManualCheckBox = new WpfCheckBox
+                {
+                    Content = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "Manual",
+                        FontSize = 11,
+                        FontWeight = System.Windows.FontWeights.Normal,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        Margin = new WpfThickness(2, 0, 0, 0)
+                    },
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(6, 0, 0, 0),
+                    Padding = new WpfThickness(0),
+                    LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+                };
+                _xyStageManualCheckBox.IsEnabled = false;
+                var xyRow = new System.Windows.Controls.StackPanel
+                {
+                    Orientation = System.Windows.Controls.Orientation.Horizontal,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(0, 0, 0, 14)
+                };
+                xyRow.Children.Add(cbw);
+                xyRow.Children.Add(_xyStageManualCheckBox);
+                System.Windows.Controls.Grid.SetRow(xyRow, top8Rows[i]);
+                System.Windows.Controls.Grid.SetColumn(xyRow, top8Cols[i]);
+                componentsGrid.Children.Add(xyRow);
+                var xyCb = _configCheckBoxes["XY Stage"];
+                xyCb.Checked   += (s, e) => { _xyStageManualCheckBox.IsEnabled = true; };
+                xyCb.Unchecked += (s, e) => { _xyStageManualCheckBox.IsEnabled = false; };
+            }
+            else if (top8[i] == "LOS alignment target")
             {
                 // Wrap the note-button wrapper + Halogen checkbox in a horizontal StackPanel
                 _losHalogenCheckBox = new WpfCheckBox
@@ -1580,16 +1690,16 @@ public partial class MainWindow : Window
                 };
                 losRow.Children.Add(cbw);
                 losRow.Children.Add(_losHalogenCheckBox);
-                System.Windows.Controls.Grid.SetRow(losRow, i / 3);
-                System.Windows.Controls.Grid.SetColumn(losRow, top9GridCols[i % 3]);
+                System.Windows.Controls.Grid.SetRow(losRow, top8Rows[i]);
+                System.Windows.Controls.Grid.SetColumn(losRow, top8Cols[i]);
                 System.Windows.Controls.Grid.SetColumnSpan(losRow, 2);
                 componentsGrid.Children.Add(losRow);
             }
             else
             {
                 cbw.Margin = new WpfThickness(0, 0, 0, 14);
-                System.Windows.Controls.Grid.SetRow(cbw, i / 3);
-                System.Windows.Controls.Grid.SetColumn(cbw, top9GridCols[i % 3]);
+                System.Windows.Controls.Grid.SetRow(cbw, top8Rows[i]);
+                System.Windows.Controls.Grid.SetColumn(cbw, top8Cols[i]);
                 componentsGrid.Children.Add(cbw);
             }
         }
@@ -1812,6 +1922,99 @@ public partial class MainWindow : Window
             cbFG.Unchecked += (s, e) => { _frameGrabbersComboBox.IsEnabled  = false; _frameGrabbersComboBox2.IsEnabled = false; _frameGrabbersComboBox3.IsEnabled = false; _frameGrabbersComboBox4.IsEnabled = false; };
         }
 
+        // ── Row 8: Optical Table | Active checkbox | Width:[__] Length:[__] Height:[__] ──
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 8;
+
+            var cbOT = _configCheckBoxes["Optical Table"];
+            DetachCheckBox(cbOT); StyleSysCheckBox(cbOT);
+            cbOT.Margin = new WpfThickness(0, 0, 0, 0);
+
+            _opticalTableActiveCheckBox = new WpfCheckBox
+            {
+                Content = new System.Windows.Controls.TextBlock { Text = "Active", FontSize = 11, FontWeight = System.Windows.FontWeights.Normal, Foreground = System.Windows.Media.Brushes.Black, Margin = new WpfThickness(2, 0, 0, 0) },
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(8, 0, 0, 0),
+                Padding = new WpfThickness(0),
+                LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+            };
+
+            var lblOTW = DimLabel("Width:");  lblOTW.Margin  = new WpfThickness(16, 0, 4, 0);
+            var lblOTL = DimLabel("Length:"); lblOTL.Margin  = new WpfThickness(10, 0, 4, 0);
+            var lblOTH = DimLabel("Height:"); lblOTH.Margin  = new WpfThickness(10, 0, 4, 0);
+            _lblOTWidth = lblOTW; _lblOTLength = lblOTL; _lblOTHeight = lblOTH;
+
+            _opticalTableWidthTextBox  = DimTextBox(60); _opticalTableWidthTextBox.Margin  = new WpfThickness(0);
+            _opticalTableLengthTextBox = DimTextBox(60); _opticalTableLengthTextBox.Margin = new WpfThickness(0);
+            _opticalTableHeightTextBox = DimTextBox(60); _opticalTableHeightTextBox.Margin = new WpfThickness(0);
+
+            var otRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            var cbOTWrapper = WrapCheckBoxWithNoteButton(cbOT, "Optical Table");
+            otRow.Children.Add(cbOTWrapper);
+            otRow.Children.Add(_opticalTableActiveCheckBox);
+            otRow.Children.Add(lblOTW); otRow.Children.Add(_opticalTableWidthTextBox);
+            otRow.Children.Add(lblOTL); otRow.Children.Add(_opticalTableLengthTextBox);
+            otRow.Children.Add(lblOTH); otRow.Children.Add(_opticalTableHeightTextBox);
+            System.Windows.Controls.Grid.SetRow(otRow, r); System.Windows.Controls.Grid.SetColumn(otRow, 0); System.Windows.Controls.Grid.SetColumnSpan(otRow, 4);
+            componentsGrid.Children.Add(otRow);
+
+            SetInlineEnabled(false, lblOTW, lblOTL, lblOTH);
+            _opticalTableActiveCheckBox.IsEnabled  = false;
+            _opticalTableWidthTextBox.IsEnabled    = false;
+            _opticalTableLengthTextBox.IsEnabled   = false;
+            _opticalTableHeightTextBox.IsEnabled   = false;
+            cbOT.Checked   += (s, e) => { SetInlineEnabled(true,  lblOTW, lblOTL, lblOTH); _opticalTableActiveCheckBox.IsEnabled = true; _opticalTableWidthTextBox.IsEnabled  = true; _opticalTableWidthTextBox.Foreground  = System.Windows.Media.Brushes.Black; _opticalTableLengthTextBox.IsEnabled = true; _opticalTableLengthTextBox.Foreground = System.Windows.Media.Brushes.Black; _opticalTableHeightTextBox.IsEnabled = true; _opticalTableHeightTextBox.Foreground = System.Windows.Media.Brushes.Black; };
+            cbOT.Unchecked += (s, e) => { SetInlineEnabled(false, lblOTW, lblOTL, lblOTH); _opticalTableActiveCheckBox.IsEnabled = false; _opticalTableWidthTextBox.IsEnabled  = false; _opticalTableWidthTextBox.Foreground  = _greyBrush; _opticalTableLengthTextBox.IsEnabled = false; _opticalTableLengthTextBox.Foreground = _greyBrush; _opticalTableHeightTextBox.IsEnabled = false; _opticalTableHeightTextBox.Foreground = _greyBrush; };
+        }
+
+        // ── Row 9: Rackmount | +Monitor Arm | Height: [__] [U] ───────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 9;
+
+            var cbRM = _configCheckBoxes["Rackmount"];
+            DetachCheckBox(cbRM); StyleSysCheckBox(cbRM);
+            cbRM.Margin = new WpfThickness(0, 0, 0, 0);
+            var cbRMWrapper = WrapCheckBoxWithNoteButton(cbRM, "Rackmount");
+
+            _rackmountMonitorArmCheckBox = new WpfCheckBox
+            {
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = "+Monitor Arm",
+                    FontSize = 11,
+                    FontWeight = System.Windows.FontWeights.Normal,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    Margin = new WpfThickness(2, 0, 0, 0)
+                },
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(6, 0, 0, 0),
+                Padding = new WpfThickness(0),
+                LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+            };
+            var lblRH = new System.Windows.Controls.TextBlock { Text = "Height:", FontSize = 12, FontWeight = System.Windows.FontWeights.Normal, Foreground = _greyBrush, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(10, 0, 3, 0) };
+            _rackmountHeightTextBox = new System.Windows.Controls.TextBox { Width = 45, Height = 24, FontSize = 12, Foreground = _greyBrush, Padding = new WpfThickness(3, 1, 3, 1), VerticalAlignment = System.Windows.VerticalAlignment.Center, VerticalContentAlignment = System.Windows.VerticalAlignment.Center };
+            var lblRU = new System.Windows.Controls.TextBlock { Text = "[U]", FontSize = 12, FontWeight = System.Windows.FontWeights.Normal, Foreground = _greyBrush, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(3, 0, 0, 0) };
+            _lblRackmountHeight = lblRH; _lblRackmountU = lblRU;
+
+            var rmRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            rmRow.Children.Add(cbRMWrapper);
+            rmRow.Children.Add(_rackmountMonitorArmCheckBox);
+            rmRow.Children.Add(lblRH);
+            rmRow.Children.Add(_rackmountHeightTextBox);
+            rmRow.Children.Add(lblRU);
+            System.Windows.Controls.Grid.SetRow(rmRow, r);
+            System.Windows.Controls.Grid.SetColumn(rmRow, 0);
+            System.Windows.Controls.Grid.SetColumnSpan(rmRow, 4);
+            componentsGrid.Children.Add(rmRow);
+
+            _rackmountMonitorArmCheckBox.IsEnabled = false;
+            _rackmountHeightTextBox.IsEnabled = false;
+            cbRM.Checked   += (s, e) => { _rackmountMonitorArmCheckBox.IsEnabled = true;  _rackmountHeightTextBox.IsEnabled = true;  _rackmountHeightTextBox.Foreground = System.Windows.Media.Brushes.Black; SetInlineEnabled(true,  lblRH, lblRU); };
+            cbRM.Unchecked += (s, e) => { _rackmountMonitorArmCheckBox.IsEnabled = false; _rackmountHeightTextBox.IsEnabled = false; _rackmountHeightTextBox.Foreground = _greyBrush;                         SetInlineEnabled(false, lblRH, lblRU); };
+        }
+
         systemOptionsContainer.Child = componentsGrid;
         systemComponentsPanel.Children.Add(systemOptionsContainer);
         stackPanel.Children.Add(systemComponentsSection);
@@ -1831,11 +2034,19 @@ public partial class MainWindow : Window
         if (_gimbalLoadCapacityTextBox  != null && savedGimbalLC   != null) _gimbalLoadCapacityTextBox.Text   = savedGimbalLC;
         RestoreComboSelection(_gimbalAccuracyComboBox, savedGimbalAccuracy);
         if (_gimbalJoystickCheckBox != null) _gimbalJoystickCheckBox.IsChecked = savedGimbalJoystick;
-        if (_losHalogenCheckBox     != null) _losHalogenCheckBox.IsChecked     = savedLosHalogen;
+        if (_losHalogenCheckBox        != null) _losHalogenCheckBox.IsChecked        = savedLosHalogen;
+        if (_sourceStageManualCheckBox  != null) _sourceStageManualCheckBox.IsChecked = savedSourceStageManual;
+        if (_xyStageManualCheckBox      != null) _xyStageManualCheckBox.IsChecked     = savedXyStageManual;
         RestoreComboSelection(_frameGrabbersComboBox,  savedFG1);
         RestoreComboSelection(_frameGrabbersComboBox2, savedFG2);
         RestoreComboSelection(_frameGrabbersComboBox3, savedFG3);
         RestoreComboSelection(_frameGrabbersComboBox4, savedFG4);
+        if (_rackmountMonitorArmCheckBox != null) _rackmountMonitorArmCheckBox.IsChecked = savedRackmountMonitorArm;
+        if (_rackmountHeightTextBox      != null && savedRackmountHeight != null) _rackmountHeightTextBox.Text = savedRackmountHeight;
+        if (_opticalTableWidthTextBox    != null && savedOTWidth  != null) _opticalTableWidthTextBox.Text  = savedOTWidth;
+        if (_opticalTableLengthTextBox   != null && savedOTLength != null) _opticalTableLengthTextBox.Text = savedOTLength;
+        if (_opticalTableHeightTextBox   != null && savedOTHeight != null) _opticalTableHeightTextBox.Text = savedOTHeight;
+        if (_opticalTableActiveCheckBox  != null) _opticalTableActiveCheckBox.IsChecked = savedOTActive;
 
         // Sync enabled state for all inline controls to match current checkbox states
         SyncInlineControlStates();
@@ -2363,6 +2574,20 @@ public partial class MainWindow : Window
         if (_frameGrabbersComboBox2 != null) _frameGrabbersComboBox2.IsEnabled = fg;
         if (_frameGrabbersComboBox3 != null) _frameGrabbersComboBox3.IsEnabled = fg;
         if (_frameGrabbersComboBox4 != null) _frameGrabbersComboBox4.IsEnabled = fg;
+
+        bool rm = _configCheckBoxes.TryGetValue("Rackmount", out var rmCb2) && rmCb2.IsChecked == true;
+        if (_sourceStageManualCheckBox != null) _sourceStageManualCheckBox.IsEnabled = _configCheckBoxes.TryGetValue("Source Stage", out var ssCb2) && ssCb2.IsChecked == true;
+        if (_xyStageManualCheckBox     != null) _xyStageManualCheckBox.IsEnabled     = _configCheckBoxes.TryGetValue("XY Stage",     out var xyCb2) && xyCb2.IsChecked == true;
+        if (_rackmountMonitorArmCheckBox != null) _rackmountMonitorArmCheckBox.IsEnabled = rm;
+        if (_rackmountHeightTextBox      != null) { _rackmountHeightTextBox.IsEnabled = rm; _rackmountHeightTextBox.Foreground = rm ? System.Windows.Media.Brushes.Black : _greyBrush; }
+        SetInlineEnabled(rm, _lblRackmountHeight!, _lblRackmountU!);
+
+        bool ot = _configCheckBoxes.TryGetValue("Optical Table", out var otCb) && otCb.IsChecked == true;
+        if (_opticalTableActiveCheckBox  != null) _opticalTableActiveCheckBox.IsEnabled  = ot;
+        if (_opticalTableWidthTextBox    != null) { _opticalTableWidthTextBox.IsEnabled  = ot; _opticalTableWidthTextBox.Foreground  = ot ? System.Windows.Media.Brushes.Black : _greyBrush; }
+        if (_opticalTableLengthTextBox   != null) { _opticalTableLengthTextBox.IsEnabled = ot; _opticalTableLengthTextBox.Foreground = ot ? System.Windows.Media.Brushes.Black : _greyBrush; }
+        if (_opticalTableHeightTextBox   != null) { _opticalTableHeightTextBox.IsEnabled = ot; _opticalTableHeightTextBox.Foreground = ot ? System.Windows.Media.Brushes.Black : _greyBrush; }
+        SetInlineEnabled(ot, _lblOTWidth!, _lblOTLength!, _lblOTHeight!);
     }
 
     private System.Windows.Controls.TextBlock MakeComboLabel(string text) =>
@@ -2440,6 +2665,809 @@ public partial class MainWindow : Window
         template.VisualTree = borderFact;
         textBox.Template = template;
     }
+
+
+    // ── Block Diagram drag state ──────────────────────────────────────────
+    private WpfBorder? _draggedBlock;
+    private System.Windows.Point _dragOffset;
+
+    private void LoadBlockDiagramSection(System.Windows.Controls.Panel panel)
+    {
+        var card = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            CornerRadius = new CornerRadius(12),
+            BorderThickness = new WpfThickness(0),
+            Padding = new WpfThickness(16, 12, 16, 24)
+        };
+        card.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        { ShadowDepth = 0, BlurRadius = 15, Opacity = 0.08, Color = System.Windows.Media.Color.FromRgb(0, 0, 0) };
+
+        var outer = new System.Windows.Controls.StackPanel();
+        card.Child = outer;
+
+        // Title
+        outer.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "Block Diagram",
+            FontSize = 22, FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = System.Windows.Media.Brushes.Black,
+            Margin = new WpfThickness(0, 0, 0, 4)
+        });
+        outer.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "Auto-generated from selected components. Drag blocks to reposition. Edit text by clicking a block label.",
+            FontSize = 12, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(100,116,139)),
+            Margin = new WpfThickness(0, 0, 0, 16), TextWrapping = System.Windows.TextWrapping.Wrap
+        });
+
+        // Canvas
+        var canvas = new System.Windows.Controls.Canvas
+        {
+            Width = 750, Height = 460,
+            Background = System.Windows.Media.Brushes.White,
+            ClipToBounds = true
+        };
+        var canvasBorder = new WpfBorder
+        {
+            BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(226,232,240)),
+            BorderThickness = new WpfThickness(1), CornerRadius = new CornerRadius(6),
+            Child = canvas, HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+        };
+        outer.Children.Add(canvasBorder);
+
+        // ── Read selected components ────────────────────────────────────────
+        bool hasRackmount    = IsChecked("Rackmount");
+        bool hasBB           = IsChecked("B.B");
+        bool hasIS           = IsChecked("I.S");
+        bool hasBacklight    = IsChecked("Backlight");
+        bool hasSourceStage  = IsChecked("Source Stage");
+        bool hasPowerMeter   = IsChecked("Power Meter");
+        bool hasEnergyMeter  = IsChecked("Energy Meter");
+        bool hasOptTable     = IsChecked("Optical Table");
+        bool hasCTE          = IsChecked("CTE");
+        bool hasDevCenter    = IsChecked("Device Center");
+        bool hasXYStage      = IsChecked("XY Stage");
+        bool hasMonitorArm   = _rackmountMonitorArmCheckBox?.IsChecked == true;
+        bool hasLOS          = IsChecked("LOS Laser");
+        bool hasQTH          = IsChecked("QTH Lamp");
+        bool hasNewport      = IsChecked("NewPort Stage");
+        bool isXYManual      = _xyStageManualCheckBox?.IsChecked == true;
+        bool hasLOSTarget    = IsChecked("LOS alignment target");
+        bool hasFocus        = IsChecked("Focus Stage");
+        bool hasGimbal       = IsChecked("Gimbal");
+
+        // System type label
+        string sysType = string.Join(" ", new[]
+        {
+            cmbSystemType.SelectedItem?.ToString() ?? "",
+            cmbSystemVariant.SelectedItem?.ToString() ?? "",
+            cmbSystemAperture.SelectedItem?.ToString() ?? ""
+        }.Where(s => !string.IsNullOrEmpty(s)));
+        if (string.IsNullOrEmpty(sysType)) sysType = "METS";
+
+        // B.B label
+        string bbLabel = "B.B";
+        if (hasBB)
+        {
+            var t = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
+            var s2 = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(t) || !string.IsNullOrEmpty(s2))
+                bbLabel = $"B.B {s2} {t}".Trim();
+        }
+        // I.S label
+        string isLabel = "I.S";
+        if (hasIS)
+        {
+            var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(ap)) isLabel = $"I.S {ap}";
+        }
+        // Backlight label
+        string blLabel = "Backlight";
+        if (hasBacklight)
+        {
+            var bt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(bt)) blLabel = $"Backlight\n{bt}";
+        }
+
+        // Rackmount height label
+        string rackLabel = "Rackmount";
+        if (hasRackmount)
+        {
+            var rh = _rackmountHeightTextBox?.Text.Trim() ?? "";
+            if (!string.IsNullOrEmpty(rh)) rackLabel = $"Rackmount {rh}U";
+        }
+
+        // Optical Table label
+        string otLabel = "Optical Table";
+        if (hasOptTable)
+        {
+            var w = _opticalTableWidthTextBox?.Text.Trim() ?? "";
+            var l = _opticalTableLengthTextBox?.Text.Trim() ?? "";
+            var h = _opticalTableHeightTextBox?.Text.Trim() ?? "";
+            var dims = string.Join(" x ", new[]{w,l,h}.Where(x=>!string.IsNullOrEmpty(x)));
+            if (!string.IsNullOrEmpty(dims)) otLabel = $"Optical Table\n{dims} [mm]";
+        }
+
+        // Helper: make a draggable block
+        WpfBorder MakeBlock(string text, double x, double y, double w, double h,
+            bool bold = false, bool filled = false, double fontSize = 11,
+            System.Windows.Media.Brush? textColor = null)
+        {
+            var tb = new System.Windows.Controls.TextBox
+            {
+                Text = text,
+                FontSize = fontSize,
+                FontWeight = bold ? System.Windows.FontWeights.Bold : System.Windows.FontWeights.Normal,
+                Foreground = textColor ?? System.Windows.Media.Brushes.Black,
+                Background = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new WpfThickness(0),
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                TextAlignment = System.Windows.TextAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                AcceptsReturn = true,
+                IsReadOnly = false,
+                Padding = new WpfThickness(2)
+            };
+            var border = new WpfBorder
+            {
+                Width = w, Height = h,
+                BorderBrush = System.Windows.Media.Brushes.Black,
+                BorderThickness = new WpfThickness(1.5),
+                CornerRadius = new CornerRadius(0),
+                Background = filled
+                    ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220,235,255))
+                    : System.Windows.Media.Brushes.White,
+                Child = tb,
+                Cursor = System.Windows.Input.Cursors.SizeAll
+            };
+            System.Windows.Controls.Canvas.SetLeft(border, x);
+            System.Windows.Controls.Canvas.SetTop(border, y);
+
+            border.MouseLeftButtonDown += (s, e) =>
+            {
+                _draggedBlock = border;
+                _dragOffset = e.GetPosition(canvas);
+                _dragOffset.X -= System.Windows.Controls.Canvas.GetLeft(border);
+                _dragOffset.Y -= System.Windows.Controls.Canvas.GetTop(border);
+                border.CaptureMouse();
+                e.Handled = true;
+            };
+            border.MouseMove += (s, e) =>
+            {
+                if (_draggedBlock == border && border.IsMouseCaptured)
+                {
+                    var pos = e.GetPosition(canvas);
+                    double nx = pos.X - _dragOffset.X;
+                    double ny = pos.Y - _dragOffset.Y;
+                    nx = Math.Max(0, Math.Min(canvas.Width - border.Width, nx));
+                    ny = Math.Max(0, Math.Min(canvas.Height - border.Height, ny));
+                    System.Windows.Controls.Canvas.SetLeft(border, nx);
+                    System.Windows.Controls.Canvas.SetTop(border, ny);
+                }
+            };
+            border.MouseLeftButtonUp += (s, e) =>
+            {
+                if (_draggedBlock == border) { _draggedBlock = null; border.ReleaseMouseCapture(); }
+            };
+            canvas.Children.Add(border);
+            return border;
+        }
+
+        // Helper: plain text label (no border)
+        void MakeLabel(string text, double x, double y, double fontSize = 10, bool bold = false)
+        {
+            var tb = new System.Windows.Controls.TextBlock
+            {
+                Text = text, FontSize = fontSize,
+                FontWeight = bold ? System.Windows.FontWeights.Bold : System.Windows.FontWeights.Normal,
+                Foreground = System.Windows.Media.Brushes.Black,
+                TextAlignment = System.Windows.TextAlignment.Center,
+                TextWrapping = System.Windows.TextWrapping.Wrap
+            };
+            System.Windows.Controls.Canvas.SetLeft(tb, x);
+            System.Windows.Controls.Canvas.SetTop(tb, y);
+            canvas.Children.Add(tb);
+        }
+
+        // Helper: draw arrow line on canvas
+        void DrawArrow(double x1, double y1, double x2, double y2, string midLabel = "")
+        {
+            var green = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 160, 0));
+            var line = new System.Windows.Shapes.Line
+            {
+                X1 = x1, Y1 = y1, X2 = x2, Y2 = y2,
+                Stroke = green, StrokeThickness = 1.5
+            };
+            canvas.Children.Add(line);
+
+            // Arrow heads (both ends = double-headed)
+            double dx = x2 - x1, dy = y2 - y1;
+            double len = Math.Sqrt(dx*dx + dy*dy);
+            if (len < 1) return;
+            double ux = dx/len, uy = dy/len;
+            double aLen = 10, aW = 5;
+
+            System.Windows.Shapes.Polygon MakeHead(double ax, double ay, double dirX, double dirY)
+            {
+                return new System.Windows.Shapes.Polygon
+                {
+                    Fill = green,
+                    Points = new System.Windows.Media.PointCollection
+                    {
+                        new System.Windows.Point(ax, ay),
+                        new System.Windows.Point(ax - dirX*aLen + dirY*aW, ay - dirY*aLen - dirX*aW),
+                        new System.Windows.Point(ax - dirX*aLen - dirY*aW, ay - dirY*aLen + dirX*aW)
+                    }
+                };
+            }
+            canvas.Children.Add(MakeHead(x2, y2, ux, uy));
+            canvas.Children.Add(MakeHead(x1, y1, -ux, -uy));
+
+            if (!string.IsNullOrEmpty(midLabel))
+            {
+                double mx = (x1+x2)/2, my = (y1+y2)/2;
+                var lbl = new System.Windows.Controls.TextBlock
+                {
+                    Text = midLabel, FontSize = 10, FontWeight = System.Windows.FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    Background = System.Windows.Media.Brushes.White
+                };
+                System.Windows.Controls.Canvas.SetLeft(lbl, mx - 18);
+                System.Windows.Controls.Canvas.SetTop(lbl, my - 22);  // above the arrow
+                canvas.Children.Add(lbl);
+            }
+        }
+
+        // ── LAYOUT CONSTANTS ───────────────────────────────────────────────
+        const double canvasW = 750;
+        double topPad = 60;   // vertical padding from top
+
+        // Fixed sizes
+        double srcStageW = 90,  srcStageH = 330;
+        double narrowW   = 22,  narrowH   = 120;
+        double collBodyW = 320, collBodyH = 310;
+        double rackW     = 100, rackH     = 210;
+        double rackGap   = 60;  // space between rackmount right edge and source stage left edge
+        double meterW    = 68,  meterH    = 52;
+        double meterGap  = 16;  // space between collimator right edge and meter
+
+        // ── Pre-compute required height and scale down to fit canvas ─────
+        {
+            double neededH = topPad + collBodyH + 20; // base: topPad + collimator + bottom pad
+            if (hasOptTable) neededH += 22 + 50 + 12; // gap + table height + pad
+
+            const double availH = 455;
+            if (neededH > availH)
+            {
+                double s = availH / neededH;
+                srcStageW *= s; srcStageH *= s;
+                narrowW   *= s; narrowH   *= s;
+                collBodyW *= s; collBodyH *= s;
+                rackW     *= s; rackH     *= s;
+                rackGap   *= s;
+                meterW    *= s; meterH    *= s;
+                meterGap  *= s;
+                topPad    *= s;
+            }
+        }
+
+        // ── Compute total diagram width to centre it ─────────────────────
+        double diagramW = srcStageW + narrowW + collBodyW;
+        if (hasRackmount)   diagramW += rackW + rackGap;
+        if (hasPowerMeter || hasEnergyMeter) diagramW += meterW + meterGap;
+
+        double offsetX = Math.Max(10, (canvasW - diagramW) / 2.0);
+
+        // ── Absolute X positions derived from offsetX ────────────────────
+        double rackX, srcStageX, narrowX, collBodyX, meterX;
+        if (hasRackmount)
+        {
+            rackX      = offsetX;
+            srcStageX  = rackX + rackW + rackGap;
+        }
+        else
+        {
+            rackX     = offsetX;          // unused but kept for arrow calc
+            srcStageX = offsetX;
+        }
+        narrowX    = srcStageX + srcStageW;
+        collBodyX  = narrowX   + narrowW;
+        meterX     = collBodyX + collBodyW + meterGap;
+
+        // ── Vertical positions ───────────────────────────────────────────
+        double collBodyY = topPad;
+        double srcStageY = collBodyY - 15;
+        double narrowY   = collBodyY + 30;
+        double rackY     = collBodyY + 5;
+        double meterY    = collBodyY;
+
+        // Arrow between rack and source stage
+        double arrowStartX = rackX + rackW + 6;
+        double arrowEndX   = srcStageX - 8;
+        double arrowY      = rackY + rackH / 2;
+
+        // ── Monitor on Arm (far left of rack) ──────────────────────────────
+        if (hasMonitorArm)
+        {
+            MakeBlock("Monitor\non Arm", rackX - 65, rackY + 45, 58, 42, fontSize: 9);
+            var ln = new System.Windows.Shapes.Line
+            { X1 = rackX - 7, Y1 = rackY + 66, X2 = rackX, Y2 = rackY + 66,
+              Stroke = System.Windows.Media.Brushes.Black, StrokeThickness = 1.5 };
+            canvas.Children.Add(ln);
+        }
+
+        // ── RACKMOUNT block ─────────────────────────────────────────────────
+        if (hasRackmount)
+        {
+            // "Rackmount Size" label above the block — same style as "Motorized Source Stage"
+            var rackAboveLabel = new System.Windows.Controls.TextBlock
+            {
+                Text = rackLabel,
+                FontSize = 11, FontWeight = System.Windows.FontWeights.Bold,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 38, 38)),
+                TextAlignment = System.Windows.TextAlignment.Left,
+                TextWrapping = System.Windows.TextWrapping.Wrap
+            };
+            System.Windows.Controls.Canvas.SetLeft(rackAboveLabel, rackX);
+            System.Windows.Controls.Canvas.SetTop(rackAboveLabel, rackY - 28);
+            canvas.Children.Add(rackAboveLabel);
+
+            // Build slot list: PDU → controllers → Monitor → Computer (no CTE)
+            var rackSlots = new List<(string text, bool isRed)>();
+            rackSlots.Add(("PDU", true));
+            if (hasBB)  rackSlots.Add(("SR800N", true));
+            if (hasIS)  rackSlots.Add(("SR300N", true));
+            rackSlots.Add(("Monitor", true));
+            rackSlots.Add(("Computer", true));
+
+            // Height logic:
+            // - Minimum height is collBodyH (matches collimator height)
+            // - Required height = slots * (minSlotH + gap) + padding
+            // - If required > min, use required; otherwise use min and stretch slots evenly
+            double minSlotH = 38, slotGap2 = 4;
+            double padding2 = 8;
+            double requiredH = rackSlots.Count * (minSlotH + slotGap2) + padding2;
+            double rackDynH = Math.Max(collBodyH, requiredH);
+
+            // Distribute available space evenly across slots
+            double totalSlotSpace = rackDynH - padding2 - (rackSlots.Count - 1) * slotGap2;
+            double slotH2 = totalSlotSpace / rackSlots.Count;
+
+            var rackBorder = new WpfBorder
+            {
+                Width = rackW, Height = rackDynH,
+                BorderBrush = System.Windows.Media.Brushes.Black,
+                BorderThickness = new WpfThickness(2.5),
+                Background = System.Windows.Media.Brushes.White,
+                Cursor = System.Windows.Input.Cursors.SizeAll
+            };
+            var rackStack = new System.Windows.Controls.StackPanel
+            {
+                Margin = new WpfThickness(0, 4, 0, 4)
+            };
+            rackBorder.Child = rackStack;
+
+            foreach (var (slotText, slotRed) in rackSlots)
+            {
+                var ib = new WpfBorder
+                {
+                    BorderBrush = System.Windows.Media.Brushes.Black,
+                    BorderThickness = new WpfThickness(1.5),
+                    Margin = new WpfThickness(5, 2, 5, 2),
+                    Height = slotH2
+                };
+                ib.Child = new System.Windows.Controls.TextBox
+                {
+                    Text = slotText,
+                    FontSize = 10,
+                    FontWeight = System.Windows.FontWeights.Bold,
+                    Foreground = slotRed
+                        ? System.Windows.Media.Brushes.Red
+                        : System.Windows.Media.Brushes.Black,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    BorderThickness = new WpfThickness(0),
+                    TextAlignment = System.Windows.TextAlignment.Center,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+                    IsReadOnly = false
+                };
+                rackStack.Children.Add(ib);
+            }
+
+            System.Windows.Controls.Canvas.SetLeft(rackBorder, rackX);
+            System.Windows.Controls.Canvas.SetTop(rackBorder, rackY);
+            rackBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                _draggedBlock = rackBorder; _dragOffset = e.GetPosition(canvas);
+                _dragOffset.X -= System.Windows.Controls.Canvas.GetLeft(rackBorder);
+                _dragOffset.Y -= System.Windows.Controls.Canvas.GetTop(rackBorder);
+                rackBorder.CaptureMouse(); e.Handled = true;
+            };
+            rackBorder.MouseMove += (s, e) =>
+            {
+                if (_draggedBlock == rackBorder && rackBorder.IsMouseCaptured)
+                {
+                    var pos = e.GetPosition(canvas);
+                    System.Windows.Controls.Canvas.SetLeft(rackBorder, pos.X - _dragOffset.X);
+                    System.Windows.Controls.Canvas.SetTop(rackBorder, pos.Y - _dragOffset.Y);
+                }
+            };
+            rackBorder.MouseLeftButtonUp += (s, e) =>
+            { if (_draggedBlock == rackBorder) { _draggedBlock = null; rackBorder.ReleaseMouseCapture(); } };
+            canvas.Children.Add(rackBorder);
+
+            // Wheels drawn OUTSIDE the border, centered below the rack block
+            double wheelY = rackY + rackDynH + 3;
+            double wheelSize = 16;
+            double wheelSpacing = rackW * 0.28;
+            foreach (var wx in new[] { rackX + wheelSpacing, rackX + rackW - wheelSpacing - wheelSize })
+            {
+                var wheel = new System.Windows.Shapes.Ellipse
+                {
+                    Width = wheelSize, Height = wheelSize,
+                    Stroke = System.Windows.Media.Brushes.Black,
+                    StrokeThickness = 2,
+                    Fill = System.Windows.Media.Brushes.White
+                };
+                System.Windows.Controls.Canvas.SetLeft(wheel, wx);
+                System.Windows.Controls.Canvas.SetTop(wheel, wheelY);
+                canvas.Children.Add(wheel);
+            }
+
+            DrawArrow(arrowStartX, arrowY, arrowEndX, arrowY, "4 Meter");
+        }
+
+        // ── COLLIMATOR DEFAULT LAYOUT ───────────────────────────────────────
+        // Source Stage block (left standalone)
+        {
+            var srcBorder = new WpfBorder
+            {
+                Width = srcStageW, Height = srcStageH,
+                BorderBrush = System.Windows.Media.Brushes.Black,
+                BorderThickness = new WpfThickness(2.5),
+                Background = System.Windows.Media.Brushes.White,
+                Cursor = System.Windows.Input.Cursors.SizeAll
+            };
+            var srcTb = new System.Windows.Controls.TextBox
+            {
+                Text = "", FontSize = 11, BorderThickness = new WpfThickness(0),
+                Background = System.Windows.Media.Brushes.Transparent,
+                TextAlignment = System.Windows.TextAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+                TextWrapping = System.Windows.TextWrapping.Wrap, IsReadOnly = false,
+                Padding = new WpfThickness(2)
+            };
+            srcBorder.Child = srcTb;
+            System.Windows.Controls.Canvas.SetLeft(srcBorder, srcStageX);
+            System.Windows.Controls.Canvas.SetTop(srcBorder, srcStageY);
+            srcBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                _draggedBlock = srcBorder; _dragOffset = e.GetPosition(canvas);
+                _dragOffset.X -= System.Windows.Controls.Canvas.GetLeft(srcBorder);
+                _dragOffset.Y -= System.Windows.Controls.Canvas.GetTop(srcBorder);
+                srcBorder.CaptureMouse(); e.Handled = true;
+            };
+            srcBorder.MouseMove += (s, e) =>
+            {
+                if (_draggedBlock == srcBorder && srcBorder.IsMouseCaptured)
+                {
+                    var pos = e.GetPosition(canvas);
+                    System.Windows.Controls.Canvas.SetLeft(srcBorder, pos.X - _dragOffset.X);
+                    System.Windows.Controls.Canvas.SetTop(srcBorder, pos.Y - _dragOffset.Y);
+                }
+            };
+            srcBorder.MouseLeftButtonUp += (s, e) =>
+            { if (_draggedBlock == srcBorder) { _draggedBlock = null; srcBorder.ReleaseMouseCapture(); } };
+            canvas.Children.Add(srcBorder);
+
+            // "Motorized Source Stage" label above — red, bold, matching the reference
+            var srcLabel = new System.Windows.Controls.TextBlock
+            {
+                Text = "Motorized\nSource Stage",
+                FontSize = 10, FontWeight = System.Windows.FontWeights.Bold,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(200, 0, 0)),
+                TextAlignment = System.Windows.TextAlignment.Center,
+                TextWrapping = System.Windows.TextWrapping.Wrap
+            };
+            System.Windows.Controls.Canvas.SetLeft(srcLabel, srcStageX);
+            System.Windows.Controls.Canvas.SetTop(srcLabel, srcStageY - 44);
+            canvas.Children.Add(srcLabel);
+        }
+
+        // Narrow vertical connector bar (between source stage and collimator body)
+        {
+            var narrowBorder = new WpfBorder
+            {
+                Width = narrowW, Height = narrowH,
+                BorderBrush = System.Windows.Media.Brushes.Black,
+                BorderThickness = new WpfThickness(2),
+                Background = System.Windows.Media.Brushes.White,
+                Cursor = System.Windows.Input.Cursors.SizeAll
+            };
+            System.Windows.Controls.Canvas.SetLeft(narrowBorder, narrowX);
+            System.Windows.Controls.Canvas.SetTop(narrowBorder, narrowY);
+            narrowBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                _draggedBlock = narrowBorder; _dragOffset = e.GetPosition(canvas);
+                _dragOffset.X -= System.Windows.Controls.Canvas.GetLeft(narrowBorder);
+                _dragOffset.Y -= System.Windows.Controls.Canvas.GetTop(narrowBorder);
+                narrowBorder.CaptureMouse(); e.Handled = true;
+            };
+            narrowBorder.MouseMove += (s, e) =>
+            {
+                if (_draggedBlock == narrowBorder && narrowBorder.IsMouseCaptured)
+                {
+                    var pos = e.GetPosition(canvas);
+                    System.Windows.Controls.Canvas.SetLeft(narrowBorder, pos.X - _dragOffset.X);
+                    System.Windows.Controls.Canvas.SetTop(narrowBorder, pos.Y - _dragOffset.Y);
+                }
+            };
+            narrowBorder.MouseLeftButtonUp += (s, e) =>
+            { if (_draggedBlock == narrowBorder) { _draggedBlock = null; narrowBorder.ReleaseMouseCapture(); } };
+            canvas.Children.Add(narrowBorder);
+
+            // "Targets Wheel" label — right of the narrow bar, above it, never overlapping
+            double twCenterX = narrowX + narrowW / 2.0;  // arrow stem X (center of narrow bar)
+            var twLabel = new System.Windows.Controls.TextBlock
+            {
+                Text = "Targets Wheel",
+                FontSize = 10, FontWeight = System.Windows.FontWeights.Normal,
+                Foreground = System.Windows.Media.Brushes.Black,
+                TextAlignment = System.Windows.TextAlignment.Left,
+                TextWrapping = System.Windows.TextWrapping.NoWrap
+            };
+            // Place label starting from the narrow bar center, extending right — fully clear of Source Stage
+            System.Windows.Controls.Canvas.SetLeft(twLabel, twCenterX + 4);
+            System.Windows.Controls.Canvas.SetTop(twLabel,  narrowY - 58);
+            canvas.Children.Add(twLabel);
+
+            // Green down arrow: stem starts high above narrow bar, tip stops above block top
+            double arrowStemX   = twCenterX;
+            double arrowLineTop = narrowY - 44;   // well above the block
+            double arrowLineBot = narrowY - 14;   // tip stops clear of block top
+            var twLine = new System.Windows.Shapes.Line
+            {
+                X1 = arrowStemX, Y1 = arrowLineTop, X2 = arrowStemX, Y2 = arrowLineBot,
+                Stroke = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 160, 0)),
+                StrokeThickness = 2.5
+            };
+            canvas.Children.Add(twLine);
+            // Arrowhead pointing down
+            canvas.Children.Add(new System.Windows.Shapes.Polygon
+            {
+                Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 160, 0)),
+                Points = new System.Windows.Media.PointCollection
+                {
+                    new System.Windows.Point(arrowStemX,     arrowLineBot + 8),
+                    new System.Windows.Point(arrowStemX - 6, arrowLineBot),
+                    new System.Windows.Point(arrowStemX + 6, arrowLineBot)
+                }
+            });
+        }
+
+        // Large rounded Collimator body (main block)
+        {
+            var collBorder = new WpfBorder
+            {
+                Width = collBodyW, Height = collBodyH,
+                BorderBrush = System.Windows.Media.Brushes.Black,
+                BorderThickness = new WpfThickness(3),
+                CornerRadius = new CornerRadius(30),
+                Background = System.Windows.Media.Brushes.White,
+                Cursor = System.Windows.Input.Cursors.SizeAll
+            };
+            var collTb = new System.Windows.Controls.TextBox
+            {
+                Text = sysType, FontSize = 32, FontWeight = System.Windows.FontWeights.Bold,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(210, 0, 0)),
+                BorderThickness = new WpfThickness(0),
+                Background = System.Windows.Media.Brushes.Transparent,
+                TextAlignment = System.Windows.TextAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Top,
+                VerticalContentAlignment = System.Windows.VerticalAlignment.Top,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                TextWrapping = System.Windows.TextWrapping.Wrap, IsReadOnly = false,
+                Padding = new WpfThickness(12, 18, 12, 0),
+                Width = collBodyW - 6, Height = collBodyH - 6
+            };
+            collBorder.Child = collTb;
+            System.Windows.Controls.Canvas.SetLeft(collBorder, collBodyX);
+            System.Windows.Controls.Canvas.SetTop(collBorder, collBodyY);
+            collBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                _draggedBlock = collBorder; _dragOffset = e.GetPosition(canvas);
+                _dragOffset.X -= System.Windows.Controls.Canvas.GetLeft(collBorder);
+                _dragOffset.Y -= System.Windows.Controls.Canvas.GetTop(collBorder);
+                collBorder.CaptureMouse(); e.Handled = true;
+            };
+            collBorder.MouseMove += (s, e) =>
+            {
+                if (_draggedBlock == collBorder && collBorder.IsMouseCaptured)
+                {
+                    var pos = e.GetPosition(canvas);
+                    System.Windows.Controls.Canvas.SetLeft(collBorder, pos.X - _dragOffset.X);
+                    System.Windows.Controls.Canvas.SetTop(collBorder, pos.Y - _dragOffset.Y);
+                }
+            };
+            collBorder.MouseLeftButtonUp += (s, e) =>
+            { if (_draggedBlock == collBorder) { _draggedBlock = null; collBorder.ReleaseMouseCapture(); } };
+            canvas.Children.Add(collBorder);
+        }
+
+        // ── B.B block inside Source Stage + SR800N Controller (no Rackmount) ──
+        if (hasBB)
+        {
+            // B.B sub-block at the top of the Source Stage — red bold text
+            MakeBlock(bbLabel, srcStageX + 4, srcStageY + 6, srcStageW - 8, 44, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+
+            // SR800N Controller — bottom-aligned with collimator bottom, left of source stage
+            if (!hasRackmount)
+            {
+                double ctrlW = 90, ctrlH = 50;
+                double ctrlX = srcStageX - ctrlW - 20;
+                double ctrlY = collBodyY + collBodyH - ctrlH;   // aligned to collimator bottom
+                MakeBlock("SR800N\nController", ctrlX, ctrlY, ctrlW, ctrlH, bold: true, fontSize: 10, textColor: System.Windows.Media.Brushes.Red);
+            }
+        }
+
+        // ── I.S block inside Source Stage + SR300N Controller (no Rackmount) ──
+        if (hasIS)
+        {
+            double isOffsetY = hasBB ? 56 : 6;
+            MakeBlock(isLabel, srcStageX + 4, srcStageY + isOffsetY, srcStageW - 8, 44, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+
+            if (!hasRackmount)
+            {
+                double ctrlW = 90, ctrlH = 50;
+                double ctrlX = srcStageX - ctrlW - 20;
+                double ctrlY = collBodyY + collBodyH - ctrlH - (hasBB ? 58 : 0);  // stack above SR800N if both
+                MakeBlock("SR300N\nController", ctrlX, ctrlY, ctrlW, ctrlH, bold: true, fontSize: 10, textColor: System.Windows.Media.Brushes.Red);
+            }
+        }
+
+        // ── Backlight, LOS Laser, QTH Lamp — sub-blocks in Source Stage, no controllers ──
+        {
+            // Count how many slots are already used by B.B and I.S
+            int slotIndex = (hasBB ? 1 : 0) + (hasIS ? 1 : 0);
+            const double slotH = 44, slotGap = 6;
+
+            if (hasBacklight)
+            {
+                double bly = srcStageY + 6 + slotIndex * (slotH + slotGap);
+                MakeBlock(blLabel, srcStageX + 4, bly, srcStageW - 8, slotH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+                slotIndex++;
+            }
+            if (hasLOS)
+            {
+                double losy = srcStageY + 6 + slotIndex * (slotH + slotGap);
+                MakeBlock("LOS Laser", srcStageX + 4, losy, srcStageW - 8, slotH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+                slotIndex++;
+            }
+            if (hasQTH)
+            {
+                double qthy = srcStageY + 6 + slotIndex * (slotH + slotGap);
+                MakeBlock("QTH Lamp", srcStageX + 4, qthy, srcStageW - 8, slotH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+            }
+        }
+
+        // ── LOS + XY Stage — both INSIDE the collimator body, stacked at bottom ──
+        {
+            double losW = 80, losH = 46;
+            double xyBarH2 = 20, xyVH2 = 50, xyBarW2 = collBodyW * 0.55, xyVW2 = 20;
+            double xyBarX2 = collBodyX + (collBodyW - xyBarW2) / 2;
+            double xyVX2   = xyBarX2 + (xyBarW2 - xyVW2) / 2;
+
+            // LOS always anchors 12px above the collimator bottom
+            double losX = collBodyX + (collBodyW - losW) / 2;
+            double losY = collBodyY + collBodyH - losH - 12;
+
+            // XY cross sits above LOS (if both), otherwise also 12px above collimator bottom
+            double xyBarY2, xyVY2;
+            if (hasLOSTarget && hasXYStage)
+            {
+                xyBarY2 = losY - xyVH2 - 10 + (xyVH2 - xyBarH2) / 2;
+                xyVY2   = losY - xyVH2 - 10;
+            }
+            else
+            {
+                xyBarY2 = collBodyY + collBodyH - 12 - xyBarH2;
+                xyVY2   = xyBarY2 - (xyVH2 - xyBarH2) / 2;
+            }
+
+            if (hasXYStage)
+            {
+                string xyLabel = isXYManual ? "Manual XY Stage" : "Motorized XY Stage";
+                var xyH2 = new WpfBorder { Width = xyBarW2, Height = xyBarH2,
+                    BorderBrush = System.Windows.Media.Brushes.Black, BorderThickness = new WpfThickness(1.5),
+                    Background = System.Windows.Media.Brushes.White };
+                System.Windows.Controls.Canvas.SetLeft(xyH2, xyBarX2);
+                System.Windows.Controls.Canvas.SetTop(xyH2, xyBarY2);
+                canvas.Children.Add(xyH2);
+
+                var xyV2 = new WpfBorder { Width = xyVW2, Height = xyVH2,
+                    BorderBrush = System.Windows.Media.Brushes.Black, BorderThickness = new WpfThickness(1.5),
+                    Background = System.Windows.Media.Brushes.White };
+                System.Windows.Controls.Canvas.SetLeft(xyV2, xyVX2);
+                System.Windows.Controls.Canvas.SetTop(xyV2, xyVY2);
+                canvas.Children.Add(xyV2);
+
+                // Label above the horizontal bar, right portion
+                var xyLbl2 = new System.Windows.Controls.TextBlock
+                {
+                    Text = xyLabel, FontSize = 9, FontWeight = System.Windows.FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.Red,
+                    TextAlignment = System.Windows.TextAlignment.Left,
+                    TextWrapping = System.Windows.TextWrapping.Wrap
+                };
+                double lblX = xyVX2 + xyVW2 + 4;
+                double lblW = (xyBarX2 + xyBarW2) - lblX - 2;
+                xyLbl2.Width = Math.Max(lblW, 70); // ensure enough room for "Motorized XY Stage"
+                System.Windows.Controls.Canvas.SetLeft(xyLbl2, lblX);
+                System.Windows.Controls.Canvas.SetTop(xyLbl2, xyBarY2 - 38);
+                canvas.Children.Add(xyLbl2);
+            }
+
+            if (hasLOSTarget)
+            {
+                MakeBlock("LOS CCD\nLOS LED", losX, losY, losW, losH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+            }
+        }
+
+        // ── Focus Stage block — left side INSIDE collimator, vertically centered ──
+        if (hasFocus)
+        {
+            double fsW = collBodyW * 0.30, fsH = 36;
+            double fsX = collBodyX + 8;
+            double fsY = collBodyY + collBodyH * 0.38;
+            MakeBlock("Focus Stage", fsX, fsY, fsW, fsH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+        }
+
+        // ── Newport Stage + Gimbal blocks — small, outside collimator, bottom-right ──
+        {
+            double npW = 90, npH = 46;
+            double npX = collBodyX + collBodyW + 16;
+            int rightSlot = 0;
+            if (hasGimbal)
+            {
+                double gY = collBodyY + collBodyH - npH * (rightSlot + 1) - 8 * rightSlot;
+                MakeBlock("Gimbal", npX, gY, npW, npH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+                rightSlot++;
+            }
+            if (hasNewport)
+            {
+                double nY = collBodyY + collBodyH - npH * (rightSlot + 1) - 8 * rightSlot;
+                MakeBlock("Newport Stage", npX, nY, npW, npH, bold: true, fontSize: 9, textColor: System.Windows.Media.Brushes.Red);
+            }
+        }
+
+        // ── OPTICAL TABLE block ─────────────────────────────────────────────
+        if (hasOptTable)
+        {
+            double otX = srcStageX - 4;
+            double otBaseY = collBodyY + collBodyH + 22;
+            MakeBlock(otLabel, otX, otBaseY, collBodyX + collBodyW - otX + 4, 50, bold: true, filled: false, fontSize: 10, textColor: System.Windows.Media.Brushes.Red);
+        }
+
+        // ── POWER METER / ENERGY METER ──────────────────────────────────────
+        double curMeterY = meterY;
+        if (hasPowerMeter)
+        {
+            MakeBlock("Power\nMeter", meterX, curMeterY, meterW, meterH, fontSize: 9);
+            curMeterY += meterH + 8;
+        }
+        if (hasEnergyMeter)
+        {
+            MakeBlock("Energy\nMeter", meterX, curMeterY, meterW, meterH, fontSize: 9);
+        }
+
+        panel.Children.Add(card);
+    }
+
+    private bool IsChecked(string key) =>
+        _configCheckBoxes.TryGetValue(key, out var cb) && cb.IsChecked == true;
 
     private void LoadActionsSection(System.Windows.Controls.Panel panel)
     {
@@ -2964,6 +3992,13 @@ public partial class MainWindow : Window
                 FontWeight = System.Windows.FontWeights.Normal
             };
             _configCheckBoxes[item] = checkBox;
+        }
+
+        // Wire all checkboxes to update the Block Diagram button state
+        foreach (var cb in _configCheckBoxes.Values)
+        {
+            cb.Checked   += (s, e) => UpdateBlockDiagramButtonState();
+            cb.Unchecked += (s, e) => UpdateBlockDiagramButtonState();
         }
     }
 
@@ -3692,6 +4727,26 @@ public partial class MainWindow : Window
                 {
                     config = (_losHalogenCheckBox?.IsChecked == true) ? "+Halogen" : "";
                 }
+                else if (kv.Key == "Rackmount")
+                {
+                    var parts = new List<string>();
+                    if (_rackmountMonitorArmCheckBox?.IsChecked == true) parts.Add("+Monitor Arm");
+                    var rh = _rackmountHeightTextBox?.Text.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(rh)) parts.Add($"Height: {rh} U");
+                    config = string.Join(", ", parts);
+                }
+                else if (kv.Key == "Optical Table")
+                {
+                    var parts = new List<string>();
+                    if (_opticalTableActiveCheckBox?.IsChecked == true) parts.Add("Active");
+                    var w = _opticalTableWidthTextBox?.Text.Trim() ?? "";
+                    var l = _opticalTableLengthTextBox?.Text.Trim() ?? "";
+                    var h = _opticalTableHeightTextBox?.Text.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(w)) parts.Add($"Width: {w}");
+                    if (!string.IsNullOrEmpty(l)) parts.Add($"Length: {l}");
+                    if (!string.IsNullOrEmpty(h)) parts.Add($"Height: {h}");
+                    config = string.Join(", ", parts);
+                }
                 else if (kv.Key == "VRS")
                 {
                     var vrsParts = new List<string>();
@@ -4157,10 +5212,18 @@ public partial class MainWindow : Window
             GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "",
             GimbalJoystick     = _gimbalJoystickCheckBox?.IsChecked == true,
             LosHalogen         = _losHalogenCheckBox?.IsChecked == true,
+            SourceStageManual  = _sourceStageManualCheckBox?.IsChecked == true,
+            XyStageManual      = _xyStageManualCheckBox?.IsChecked == true,
             FrameGrabber1      = _frameGrabbersComboBox?.SelectedItem?.ToString() ?? "",
             FrameGrabber2      = _frameGrabbersComboBox2?.SelectedItem?.ToString() ?? "",
             FrameGrabber3      = _frameGrabbersComboBox3?.SelectedItem?.ToString() ?? "",
             FrameGrabber4      = _frameGrabbersComboBox4?.SelectedItem?.ToString() ?? "",
+            RackmountMonitorArm = _rackmountMonitorArmCheckBox?.IsChecked == true,
+            RackmountHeight     = _rackmountHeightTextBox?.Text ?? "",
+            OpticalTableWidth   = _opticalTableWidthTextBox?.Text ?? "",
+            OpticalTableLength  = _opticalTableLengthTextBox?.Text ?? "",
+            OpticalTableHeight  = _opticalTableHeightTextBox?.Text ?? "",
+            OpticalTableActive  = _opticalTableActiveCheckBox?.IsChecked == true,
             Targets            = _targets.Select(t => new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details }).ToList(),
             PmQuestions        = _questions.Select(q => q.Text).ToList(),
             MarketingQuestions = _marketingQuestions.Select(q => q.Text).ToList(),
@@ -4337,11 +5400,19 @@ public partial class MainWindow : Window
         if (_gimbalLoadCapacityTextBox != null) _gimbalLoadCapacityTextBox.Text = d.GimbalLoadCapacity;
         RestoreComboSelection(_gimbalAccuracyComboBox, d.GimbalAccuracy);
         if (_gimbalJoystickCheckBox    != null) _gimbalJoystickCheckBox.IsChecked = d.GimbalJoystick;
-        if (_losHalogenCheckBox        != null) _losHalogenCheckBox.IsChecked     = d.LosHalogen;
+        if (_losHalogenCheckBox        != null) _losHalogenCheckBox.IsChecked        = d.LosHalogen;
+        if (_sourceStageManualCheckBox  != null) _sourceStageManualCheckBox.IsChecked = d.SourceStageManual;
+        if (_xyStageManualCheckBox      != null) _xyStageManualCheckBox.IsChecked     = d.XyStageManual;
         RestoreComboSelection(_frameGrabbersComboBox,  d.FrameGrabber1);
         RestoreComboSelection(_frameGrabbersComboBox2, d.FrameGrabber2);
         RestoreComboSelection(_frameGrabbersComboBox3, d.FrameGrabber3);
         RestoreComboSelection(_frameGrabbersComboBox4, d.FrameGrabber4);
+        if (_rackmountMonitorArmCheckBox != null) _rackmountMonitorArmCheckBox.IsChecked = d.RackmountMonitorArm;
+        if (_rackmountHeightTextBox      != null) _rackmountHeightTextBox.Text           = d.RackmountHeight;
+        if (_opticalTableWidthTextBox    != null) _opticalTableWidthTextBox.Text         = d.OpticalTableWidth;
+        if (_opticalTableLengthTextBox   != null) _opticalTableLengthTextBox.Text        = d.OpticalTableLength;
+        if (_opticalTableHeightTextBox   != null) _opticalTableHeightTextBox.Text        = d.OpticalTableHeight;
+        if (_opticalTableActiveCheckBox  != null) _opticalTableActiveCheckBox.IsChecked  = d.OpticalTableActive;
 
         SyncInlineControlStates();
         _pendingTemplateConfig = null;
