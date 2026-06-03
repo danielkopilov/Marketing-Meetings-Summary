@@ -182,6 +182,7 @@ public partial class MainWindow : Window
     private System.Windows.Threading.DispatcherTimer? _countdownTimer;
     private int _countdownSeconds = 60;
     private string? _lastExportedPath;
+    private System.Windows.Controls.Canvas? _blockDiagramCanvas;
     private System.Windows.Controls.ComboBox? _bbTypeComboBox;
     private System.Windows.Controls.ComboBox? _bbSizeComboBox;
     private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
@@ -2715,6 +2716,7 @@ public partial class MainWindow : Window
             Child = canvas, HorizontalAlignment = System.Windows.HorizontalAlignment.Left
         };
         outer.Children.Add(canvasBorder);
+        _blockDiagramCanvas = canvas;
 
         // ── Read selected components ────────────────────────────────────────
         bool hasRackmount    = IsChecked("Rackmount");
@@ -2954,7 +2956,12 @@ public partial class MainWindow : Window
         }
 
         // ── Compute total diagram width to centre it ─────────────────────
-        double diagramW = srcStageW + narrowW + collBodyW;
+        double rightExtraW = 0;
+        if (hasNewport || hasGimbal) rightExtraW = 106; // 90px block + 16px gap
+        // When no rackmount, standalone controller blocks sit to the left of the source stage
+        double leftExtraW = 0;
+        if (!hasRackmount && (hasBB || hasIS)) leftExtraW = 110; // 90px ctrl block + 20px gap
+        double diagramW = leftExtraW + srcStageW + narrowW + collBodyW + rightExtraW;
         if (hasRackmount)   diagramW += rackW + rackGap;
         if (hasPowerMeter || hasEnergyMeter) diagramW += meterW + meterGap;
 
@@ -2969,8 +2976,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            rackX     = offsetX;          // unused but kept for arrow calc
-            srcStageX = offsetX;
+            rackX     = offsetX;                          // unused but kept for arrow calc
+            srcStageX = offsetX + leftExtraW;             // shift right to leave room for controllers
         }
         narrowX    = srcStageX + srcStageW;
         collBodyX  = narrowX   + narrowW;
@@ -4382,6 +4389,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private static byte[] RenderCanvasToPng(System.Windows.Controls.Canvas canvas)
+    {
+        canvas.Measure(new Size(canvas.Width, canvas.Height));
+        canvas.Arrange(new Rect(0, 0, canvas.Width, canvas.Height));
+        var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            (int)canvas.Width, (int)canvas.Height, 96, 96,
+            System.Windows.Media.PixelFormats.Pbgra32);
+        rtb.Render(canvas);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+        using var ms = new System.IO.MemoryStream();
+        encoder.Save(ms);
+        return ms.ToArray();
+    }
+
     private void GenerateFromTemplate(string outputPath)
     {
         string templatePath = System.IO.Path.Combine(
@@ -4920,6 +4942,107 @@ public partial class MainWindow : Window
                     insertAfter = newRow;
                 }
             }
+        }
+
+        // ── Block diagram sketch image injection ─────────────────────────────
+        if (_blockDiagramCanvas != null)
+        {
+            try
+            {
+                byte[] pngBytes = RenderCanvasToPng(_blockDiagramCanvas);
+                string base64Png = Convert.ToBase64String(pngBytes);
+                const string imgRelId = "rIdBlockDiagram1";
+
+                // 1. Add /word/media/blockdiagram.png part
+                XNamespace pkgNs = "http://schemas.microsoft.com/office/2006/xmlPackage";
+                var imgPart = new XElement(pkgNs + "part",
+                    new XAttribute(pkgNs + "name", "/word/media/blockdiagram.png"),
+                    new XAttribute(pkgNs + "contentType", "image/png"),
+                    new XAttribute(pkgNs + "compression", "store"),
+                    new XElement(pkgNs + "binaryData", base64Png));
+                doc.Root!.Add(imgPart);
+
+                // 2. Add relationship in /word/_rels/document.xml.rels
+                XNamespace relsNs = "http://schemas.openxmlformats.org/package/2006/relationships";
+                var relsPart = doc.Root!.Elements(pkgNs + "part")
+                    .FirstOrDefault(p => ((string?)p.Attribute(pkgNs + "name")) == "/word/_rels/document.xml.rels");
+                if (relsPart != null)
+                {
+                    var relsXmlData = relsPart.Element(pkgNs + "xmlData");
+                    var relsRoot = relsXmlData?.Elements().FirstOrDefault();
+                    relsRoot?.Add(new XElement(relsNs + "Relationship",
+                        new XAttribute("Id", imgRelId),
+                        new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"),
+                        new XAttribute("Target", "media/blockdiagram.png")));
+                }
+
+                // 3. Find the paragraph containing the red run "APPLY THE SKETCH HERE!" and replace it
+                XNamespace wpNs = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
+                XNamespace aNs  = "http://schemas.openxmlformats.org/drawingml/2006/main";
+                XNamespace picNs = "http://schemas.openxmlformats.org/drawingml/2006/picture";
+                XNamespace rNs  = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+                XNamespace a14Ns = "http://schemas.microsoft.com/office/drawing/2010/main";
+
+                // Image dimensions in EMUs (English Metric Units): 1 pixel at 96dpi = 914400/96 = 9525 EMU
+                long imgWidthEmu  = (long)(_blockDiagramCanvas.Width  * 9525);
+                long imgHeightEmu = (long)(_blockDiagramCanvas.Height * 9525);
+
+                var sketchRun = body.Descendants(w + "r")
+                    .FirstOrDefault(r => IsRedRun(r) && RunText(r).Contains("APPLY THE SKETCH HERE"));
+                if (sketchRun != null)
+                {
+                    var sketchPara = sketchRun.Ancestors(w + "p").FirstOrDefault();
+                    if (sketchPara != null)
+                    {
+                        var drawingPara = new XElement(w + "p",
+                            new XElement(w + "pPr",
+                                new XElement(w + "jc", new XAttribute(w + "val", "center"))),
+                            new XElement(w + "r",
+                                new XElement(w + "drawing",
+                                    new XElement(wpNs + "inline",
+                                        new XAttribute("distT", "0"), new XAttribute("distB", "0"),
+                                        new XAttribute("distL", "0"), new XAttribute("distR", "0"),
+                                        new XElement(wpNs + "extent",
+                                            new XAttribute("cx", imgWidthEmu.ToString()),
+                                            new XAttribute("cy", imgHeightEmu.ToString())),
+                                        new XElement(wpNs + "effectExtent",
+                                            new XAttribute("l", "0"), new XAttribute("t", "0"),
+                                            new XAttribute("r", "0"), new XAttribute("b", "0")),
+                                        new XElement(wpNs + "docPr",
+                                            new XAttribute("id", "1"),
+                                            new XAttribute("name", "BlockDiagram")),
+                                        new XElement(wpNs + "cNvGraphicFramePr",
+                                            new XElement(aNs + "graphicFrameLocks",
+                                                new XAttribute("noChangeAspect", "1"))),
+                                        new XElement(aNs + "graphic",
+                                            new XElement(aNs + "graphicData",
+                                                new XAttribute("uri", "http://schemas.openxmlformats.org/drawingml/2006/picture"),
+                                                new XElement(picNs + "pic",
+                                                    new XElement(picNs + "nvPicPr",
+                                                        new XElement(picNs + "cNvPr",
+                                                            new XAttribute("id", "0"),
+                                                            new XAttribute("name", "blockdiagram.png")),
+                                                        new XElement(picNs + "cNvPicPr")),
+                                                    new XElement(picNs + "blipFill",
+                                                        new XElement(aNs + "blip",
+                                                            new XAttribute(rNs + "embed", imgRelId)),
+                                                        new XElement(aNs + "stretch",
+                                                            new XElement(aNs + "fillRect"))),
+                                                    new XElement(picNs + "spPr",
+                                                        new XElement(aNs + "xfrm",
+                                                            new XElement(aNs + "off",
+                                                                new XAttribute("x", "0"), new XAttribute("y", "0")),
+                                                            new XElement(aNs + "ext",
+                                                                new XAttribute("cx", imgWidthEmu.ToString()),
+                                                                new XAttribute("cy", imgHeightEmu.ToString()))),
+                                                        new XElement(aNs + "prstGeom",
+                                                            new XAttribute("prst", "rect"),
+                                                            new XElement(aNs + "avLst"))))))))));
+                        sketchPara.ReplaceWith(drawingPara);
+                    }
+                }
+            }
+            catch { /* If diagram render fails, skip the image gracefully */ }
         }
 
         // Convert leftover lone red space / separator runs to black (they carry spacing between fields)
