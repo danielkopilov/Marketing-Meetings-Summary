@@ -4945,9 +4945,54 @@ public partial class MainWindow : Window
         }
 
         // ── Block diagram sketch image injection ─────────────────────────────
+        // If the user never navigated to the Block Diagram tab, auto-build the canvas now
+        // from the current configuration so the sketch is always present in the output.
+        if (_blockDiagramCanvas == null)
+            LoadBlockDiagramSection(new System.Windows.Controls.StackPanel());
+
         if (_blockDiagramCanvas != null)
         {
-            try
+            // Start with native pixel→EMU dimensions (1 px @ 96 dpi = 9525 EMU).
+            // The isolated scaling try/catch below will shrink them to fit the page;
+            // if scaling throws for any reason the native values are kept as fallback.
+            long imgWidthEmu  = (long)(_blockDiagramCanvas.Width  * 9525);
+            long imgHeightEmu = (long)(_blockDiagramCanvas.Height * 9525);
+            try // scale diagram to fit the first page ─────────────────────────────────
+            {
+                long pgW = 11906L, pgH = 16838L; // A4 portrait defaults in twips
+                long marLeft = 567L, marRight = 567L, marTop = 567L, marBot = 1134L;
+                var sectPrEl = body.Elements(w + "sectPr").FirstOrDefault();
+                var pgSzEl   = sectPrEl?.Element(w + "pgSz");
+                var pgMarEl  = sectPrEl?.Element(w + "pgMar");
+                if (pgSzEl != null)
+                {
+                    if (long.TryParse((string?)pgSzEl.Attribute(w + "w"), out var pw)) pgW = pw;
+                    if (long.TryParse((string?)pgSzEl.Attribute(w + "h"), out var ph)) pgH = ph;
+                }
+                if (pgMarEl != null)
+                {
+                    if (long.TryParse((string?)pgMarEl.Attribute(w + "left"),   out var ml)) marLeft  = ml;
+                    if (long.TryParse((string?)pgMarEl.Attribute(w + "right"),  out var mr)) marRight = mr;
+                    if (long.TryParse((string?)pgMarEl.Attribute(w + "top"),    out var mt)) marTop   = mt;
+                    if (long.TryParse((string?)pgMarEl.Attribute(w + "bottom"), out var mb)) marBot   = mb;
+                }
+                // 1 twip = 635 EMU
+                const long TwipsToEmu = 635L;
+                // Step 1: scale down the native canvas size by 20 % unconditionally.
+                imgWidthEmu  = (long)(imgWidthEmu  * 0.80);
+                imgHeightEmu = (long)(imgHeightEmu * 0.80);
+                // Step 2: further constrain to page body width and 45 % of body height
+                //         so the image never overflows the page in either dimension.
+                long maxWidthEmu  = (pgW - marLeft - marRight) * TwipsToEmu;
+                long maxHeightEmu = (long)((pgH - marTop - marBot) * TwipsToEmu * 0.45);
+                double scaleX   = imgWidthEmu  > maxWidthEmu  ? (double)maxWidthEmu  / imgWidthEmu  : 1.0;
+                double scaleY   = imgHeightEmu > maxHeightEmu ? (double)maxHeightEmu / imgHeightEmu : 1.0;
+                double imgScale = Math.Min(scaleX, scaleY);
+                imgWidthEmu  = (long)(imgWidthEmu  * imgScale);
+                imgHeightEmu = (long)(imgHeightEmu * imgScale);
+            }
+            catch { /* keep native dimensions on any scaling error */ }
+            try // inject sketch PNG into the document ────────────────────────────────
             {
                 byte[] pngBytes = RenderCanvasToPng(_blockDiagramCanvas);
                 string base64Png = Convert.ToBase64String(pngBytes);
@@ -4982,10 +5027,6 @@ public partial class MainWindow : Window
                 XNamespace picNs = "http://schemas.openxmlformats.org/drawingml/2006/picture";
                 XNamespace rNs  = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
                 XNamespace a14Ns = "http://schemas.microsoft.com/office/drawing/2010/main";
-
-                // Image dimensions in EMUs (English Metric Units): 1 pixel at 96dpi = 914400/96 = 9525 EMU
-                long imgWidthEmu  = (long)(_blockDiagramCanvas.Width  * 9525);
-                long imgHeightEmu = (long)(_blockDiagramCanvas.Height * 9525);
 
                 var sketchRun = body.Descendants(w + "r")
                     .FirstOrDefault(r => IsRedRun(r) && RunText(r).Contains("APPLY THE SKETCH HERE"));
@@ -5300,6 +5341,12 @@ public partial class MainWindow : Window
 
     private TemplateData CollectTemplateData()
     {
+        // If the Configuration section has never been visited since the last template load,
+        // the inline controls (_bbTypeComboBox, _opticalTableWidthTextBox, etc.) are null or
+        // still hold their pre-load values.  Use _pendingTemplateConfig as the authoritative
+        // source for those fields so that auto-save never overwrites good data with empty strings.
+        var p = _pendingTemplateConfig;
+
         var data = new TemplateData
         {
             OrderNumber        = txtOrderNumber.Text,
@@ -5320,33 +5367,35 @@ public partial class MainWindow : Window
             Penalties          = txtPenalties.Text,
             DORated            = chkDORated.IsChecked == true,
             ComponentNotes     = new Dictionary<string, string>(_componentNotes),
-            BBType             = _bbTypeComboBox?.SelectedItem?.ToString() ?? "",
-            BBSize             = _bbSizeComboBox?.SelectedItem?.ToString() ?? "",
-            ISAperture         = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "",
-            BacklightType      = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "",
-            MaxWeight          = _maxWeightTextBox?.Text ?? "",
-            FiniteDistance     = _finiteDistance1TextBox?.Text ?? "",
-            Vrs1               = _vrsComboBox1?.SelectedItem?.ToString() ?? "",
-            Vrs2               = _vrsComboBox2?.SelectedItem?.ToString() ?? "",
-            Vrs3               = _vrsComboBox3?.SelectedItem?.ToString() ?? "",
-            Vrs4               = _vrsComboBox4?.SelectedItem?.ToString() ?? "",
-            GimbalSize         = _gimbalSizeTextBox?.Text ?? "",
-            GimbalLoadCapacity = _gimbalLoadCapacityTextBox?.Text ?? "",
-            GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "",
-            GimbalJoystick     = _gimbalJoystickCheckBox?.IsChecked == true,
-            LosHalogen         = _losHalogenCheckBox?.IsChecked == true,
-            SourceStageManual  = _sourceStageManualCheckBox?.IsChecked == true,
-            XyStageManual      = _xyStageManualCheckBox?.IsChecked == true,
-            FrameGrabber1      = _frameGrabbersComboBox?.SelectedItem?.ToString() ?? "",
-            FrameGrabber2      = _frameGrabbersComboBox2?.SelectedItem?.ToString() ?? "",
-            FrameGrabber3      = _frameGrabbersComboBox3?.SelectedItem?.ToString() ?? "",
-            FrameGrabber4      = _frameGrabbersComboBox4?.SelectedItem?.ToString() ?? "",
-            RackmountMonitorArm = _rackmountMonitorArmCheckBox?.IsChecked == true,
-            RackmountHeight     = _rackmountHeightTextBox?.Text ?? "",
-            OpticalTableWidth   = _opticalTableWidthTextBox?.Text ?? "",
-            OpticalTableLength  = _opticalTableLengthTextBox?.Text ?? "",
-            OpticalTableHeight  = _opticalTableHeightTextBox?.Text ?? "",
-            OpticalTableActive  = _opticalTableActiveCheckBox?.IsChecked == true,
+            // Inline config controls — fall back to pending template values when controls
+            // have not been materialised yet (Configuration tab not yet visited after load).
+            BBType             = _bbTypeComboBox?.SelectedItem?.ToString()           ?? p?.BBType             ?? "",
+            BBSize             = _bbSizeComboBox?.SelectedItem?.ToString()           ?? p?.BBSize             ?? "",
+            ISAperture         = _isExitApertureComboBox?.SelectedItem?.ToString()   ?? p?.ISAperture         ?? "",
+            BacklightType      = _backlightTypeComboBox?.SelectedItem?.ToString()    ?? p?.BacklightType      ?? "",
+            MaxWeight          = _maxWeightTextBox?.Text                             ?? p?.MaxWeight          ?? "",
+            FiniteDistance     = _finiteDistance1TextBox?.Text                       ?? p?.FiniteDistance     ?? "",
+            Vrs1               = _vrsComboBox1?.SelectedItem?.ToString()             ?? p?.Vrs1               ?? "",
+            Vrs2               = _vrsComboBox2?.SelectedItem?.ToString()             ?? p?.Vrs2               ?? "",
+            Vrs3               = _vrsComboBox3?.SelectedItem?.ToString()             ?? p?.Vrs3               ?? "",
+            Vrs4               = _vrsComboBox4?.SelectedItem?.ToString()             ?? p?.Vrs4               ?? "",
+            GimbalSize         = _gimbalSizeTextBox?.Text                            ?? p?.GimbalSize         ?? "",
+            GimbalLoadCapacity = _gimbalLoadCapacityTextBox?.Text                    ?? p?.GimbalLoadCapacity ?? "",
+            GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString()   ?? p?.GimbalAccuracy     ?? "",
+            GimbalJoystick     = _gimbalJoystickCheckBox?.IsChecked                  ?? p?.GimbalJoystick     ?? false,
+            LosHalogen         = _losHalogenCheckBox?.IsChecked                      ?? p?.LosHalogen         ?? false,
+            SourceStageManual  = _sourceStageManualCheckBox?.IsChecked               ?? p?.SourceStageManual  ?? false,
+            XyStageManual      = _xyStageManualCheckBox?.IsChecked                   ?? p?.XyStageManual      ?? false,
+            FrameGrabber1      = _frameGrabbersComboBox?.SelectedItem?.ToString()    ?? p?.FrameGrabber1      ?? "",
+            FrameGrabber2      = _frameGrabbersComboBox2?.SelectedItem?.ToString()   ?? p?.FrameGrabber2      ?? "",
+            FrameGrabber3      = _frameGrabbersComboBox3?.SelectedItem?.ToString()   ?? p?.FrameGrabber3      ?? "",
+            FrameGrabber4      = _frameGrabbersComboBox4?.SelectedItem?.ToString()   ?? p?.FrameGrabber4      ?? "",
+            RackmountMonitorArm = _rackmountMonitorArmCheckBox?.IsChecked            ?? p?.RackmountMonitorArm ?? false,
+            RackmountHeight     = _rackmountHeightTextBox?.Text                      ?? p?.RackmountHeight     ?? "",
+            OpticalTableWidth   = _opticalTableWidthTextBox?.Text                    ?? p?.OpticalTableWidth   ?? "",
+            OpticalTableLength  = _opticalTableLengthTextBox?.Text                   ?? p?.OpticalTableLength  ?? "",
+            OpticalTableHeight  = _opticalTableHeightTextBox?.Text                   ?? p?.OpticalTableHeight  ?? "",
+            OpticalTableActive  = _opticalTableActiveCheckBox?.IsChecked             ?? p?.OpticalTableActive  ?? false,
             Targets            = _targets.Select(t => new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details }).ToList(),
             PmQuestions        = _questions.Select(q => q.Text).ToList(),
             MarketingQuestions = _marketingQuestions.Select(q => q.Text).ToList(),
@@ -5596,7 +5645,8 @@ public partial class MainWindow : Window
             txtCustomerName.Text.Trim(),
             string.Join(" ", new[] { cmbSystemType.SelectedItem?.ToString() ?? "", cmbSystemVariant.SelectedItem?.ToString() ?? "", cmbSystemAperture.SelectedItem?.ToString() ?? "" }.Where(s => !string.IsNullOrEmpty(s))),
             new System.Collections.Generic.List<string>(selectedParticipants),
-            _lastExportedPath ?? "");
+            _lastExportedPath ?? "",
+            _outlookContacts);
         win.Owner = this;
         win.ShowDialog();
     }

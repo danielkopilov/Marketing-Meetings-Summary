@@ -355,7 +355,23 @@
             <Border.Effect>
                 <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.08" Color="#000000"/>
             </Border.Effect>
-            <StackPanel>
+            <DockPanel LastChildFill="False">
+                <!-- Version info pinned to the bottom of the sidebar -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                    <Border Height="1" Background="#E2E8F0" Margin="0,0,0,10"/>
+                    <TextBlock Text="Version: 1.0"
+                               FontSize="11"
+                               Foreground="#475569"
+                               Margin="0,0,0,0"
+                               HorizontalAlignment="Left"/>
+                    <TextBlock Text="Last Updated: 08.07.2026"
+                               FontSize="11"
+                               Foreground="#475569"
+                               Margin="0,2,0,0"
+                               HorizontalAlignment="Left"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top">
                 <!-- Logo at top of side menu -->
                 <Border Height="60" Margin="0,0,0,24" HorizontalAlignment="Center">
                     <Image Source="logo.png" Height="60" Stretch="Uniform"/>
@@ -500,16 +516,17 @@
                                     <TextBlock x:Name="btnBlockDiagramText"
                                                Text="Block Diagram" 
                                                FontSize="14" 
-                                               FontWeight="Medium"
-                                               Foreground="{TemplateBinding Foreground}"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-            </StackPanel>
-        </Border>
+                                                                                       FontWeight="Medium"
+                                                                                       Foreground="{TemplateBinding Foreground}"
+                                                                                       VerticalAlignment="Center"/>
+                                                                       </StackPanel>
+                                                                   </Border>
+                                                               </ControlTemplate>
+                                                           </Button.Template>
+                                                       </Button>
+                                                       </StackPanel>
+                                                   </DockPanel>
+                                               </Border>
 
         <!-- Right Content Area - Two Separate Cards -->
         <StackPanel Grid.Column="1">
@@ -601,9 +618,9 @@
                         </Button.Template>
                     </Button>
 
-                    <!-- Load Template - bottom left (unchanged) -->
+                    <!-- Load Template - same row as Export Summary -->
                     <Button Content="📂 Load Template"
-                            Grid.Row="2" Grid.Column="0"
+                            Grid.Row="0" Grid.Column="0"
                             Click="LoadTemplateButton_Click"
                             HorizontalAlignment="Stretch"
                             Padding="8,6,8,6"

@@ -23,12 +23,19 @@ public class SendSummaryWindow : Window
     private readonly string        _projectType;
     private readonly List<string>  _participants;
     private readonly string        _attachmentPath;   // already-saved .doc path (may be empty)
+    private readonly List<string>  _outlookContacts;  // shared from MainWindow
 
     // ── editable controls ─────────────────────────────────────────────────
     private TextBox  _txtTo        = new();
+    private TextBox  _txtCc        = new();
     private TextBox  _txtSubject   = new();
     private TextBox  _txtBody      = new();
     private TextBlock _lblAttach   = new();
+
+    // ── CC autocomplete state ─────────────────────────────────────────────────
+    private System.Windows.Controls.Primitives.Popup?  _ccPopup;
+    private System.Windows.Controls.ListBox?            _ccListBox;
+    private int _ccLastAtPosition = -1;
 
     // ── stored attachment chosen in the dialog ────────────────────────────
     public string ResolvedAttachmentPath { get; private set; } = "";
@@ -38,13 +45,15 @@ public class SendSummaryWindow : Window
         string        customerName,
         string        projectType,
         List<string>  participants,
-        string        attachmentPath)
+        string        attachmentPath,
+        List<string>? outlookContacts = null)
     {
-        _orderNumber    = orderNumber;
-        _customerName   = customerName;
-        _projectType    = projectType;
-        _participants   = participants;
-        _attachmentPath = attachmentPath;
+        _orderNumber     = orderNumber;
+        _customerName    = customerName;
+        _projectType     = projectType;
+        _participants    = participants;
+        _attachmentPath  = attachmentPath;
+        _outlookContacts = outlookContacts ?? new List<string>();
 
         Title                  = "Send Summary via Outlook";
         Width                  = 680;
@@ -122,7 +131,51 @@ public class SendSummaryWindow : Window
         _txtTo.Height = 36;
         body.Children.Add(_txtTo);
 
-        // ── Subject: ──────────────────────────────────────────────────────
+        // ── CC: ───────────────────────────────────────────────────────────
+        body.Children.Add(MakeLabel("CC:"));
+        _txtCc = MakeTextBox("", false);
+        _txtCc.FontSize = 12;
+        _txtCc.Height = 36;
+        _txtCc.ToolTip = "Type email addresses separated by semicolons, or type @ to search your Outlook contacts.";
+        _txtCc.TextChanged    += CcTextBox_TextChanged;
+        _txtCc.PreviewKeyDown += CcTextBox_PreviewKeyDown;
+        body.Children.Add(_txtCc);
+
+        // Popup for CC autocomplete
+        _ccPopup = new System.Windows.Controls.Primitives.Popup
+        {
+            PlacementTarget  = _txtCc,
+            Placement        = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            Width            = 340,
+            MaxHeight        = 200,
+            StaysOpen        = false,
+            AllowsTransparency = true
+        };
+        _ccListBox = new System.Windows.Controls.ListBox
+        {
+            Background      = Brushes.White,
+            BorderBrush     = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
+            BorderThickness = new WpfThickness(2),
+            FontSize        = 13,
+            Padding         = new WpfThickness(0)
+        };
+        _ccListBox.MouseLeftButtonUp += CcListBox_MouseClick;
+        var ccPopupBorder = new WpfBorder
+        {
+            Background      = Brushes.White,
+            BorderBrush     = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
+            BorderThickness = new WpfThickness(2),
+            CornerRadius    = new CornerRadius(6),
+            MaxHeight       = 200,
+            Child           = _ccListBox,
+            Effect          = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                ShadowDepth = 2, BlurRadius = 8, Opacity = 0.3
+            }
+        };
+        _ccPopup.Child = ccPopupBorder;
+
+        // ── Subject:
         body.Children.Add(MakeLabel("Subject:"));
         _txtSubject = MakeTextBox(BuildSubject(), false);
         _txtSubject.Height = 36;
@@ -428,6 +481,131 @@ Best regards.";
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    //  CC autocomplete handlers
+    // ──────────────────────────────────────────────────────────────────────
+    private void CcTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (_ccPopup == null || _ccListBox == null) return;
+
+        string text       = _txtCc.Text;
+        int    caretIndex = _txtCc.CaretIndex;
+
+        // User just typed '@'
+        if (caretIndex > 0 && caretIndex <= text.Length && text[caretIndex - 1] == '@')
+        {
+            _ccLastAtPosition = caretIndex - 1;
+            ShowCcSuggestions("");
+            return;
+        }
+
+        // Already in autocomplete mode — filter by text after '@'
+        if (_ccLastAtPosition >= 0 && caretIndex > _ccLastAtPosition)
+        {
+            int searchStart  = _ccLastAtPosition + 1;
+            int searchLength = caretIndex - searchStart;
+            string searchText = (searchStart + searchLength <= text.Length)
+                ? text.Substring(searchStart, searchLength)
+                : "";
+            ShowCcSuggestions(searchText);
+        }
+        else
+        {
+            _ccPopup.IsOpen   = false;
+            _ccLastAtPosition = -1;
+        }
+    }
+
+    private void ShowCcSuggestions(string searchText)
+    {
+        if (_ccListBox == null || _ccPopup == null) return;
+
+        var filtered = string.IsNullOrEmpty(searchText)
+            ? _outlookContacts.Take(10).ToList()
+            : _outlookContacts
+                .Where(c => c.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Take(10)
+                .ToList();
+
+        _ccListBox.Items.Clear();
+        if (filtered.Count > 0)
+        {
+            foreach (var contact in filtered)
+                _ccListBox.Items.Add(contact);
+            _ccPopup.IsOpen = true;
+            _ccListBox.SelectedIndex = 0;
+        }
+        else
+        {
+            _ccPopup.IsOpen = false;
+        }
+    }
+
+    private void CcTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (_ccPopup?.IsOpen != true || _ccListBox == null) return;
+
+        if (e.Key == System.Windows.Input.Key.Down)
+        {
+            e.Handled = true;
+            if (_ccListBox.SelectedIndex < _ccListBox.Items.Count - 1)
+            {
+                _ccListBox.SelectedIndex++;
+                _ccListBox.ScrollIntoView(_ccListBox.SelectedItem);
+            }
+        }
+        else if (e.Key == System.Windows.Input.Key.Up)
+        {
+            e.Handled = true;
+            if (_ccListBox.SelectedIndex > 0)
+            {
+                _ccListBox.SelectedIndex--;
+                _ccListBox.ScrollIntoView(_ccListBox.SelectedItem);
+            }
+        }
+        else if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.Tab)
+        {
+            e.Handled = true;
+            if (_ccListBox.SelectedItem != null)
+                InsertCcContact(_ccListBox.SelectedItem.ToString()!);
+        }
+        else if (e.Key == System.Windows.Input.Key.Escape)
+        {
+            e.Handled = true;
+            _ccPopup.IsOpen   = false;
+            _ccLastAtPosition = -1;
+        }
+    }
+
+    private void CcListBox_MouseClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListBox lb && lb.SelectedItem != null)
+            InsertCcContact(lb.SelectedItem.ToString()!);
+    }
+
+    private void InsertCcContact(string contactName)
+    {
+        if (_ccPopup == null) return;
+
+        string text = _txtCc.Text;
+        int    caret = _txtCc.CaretIndex;
+        if (_ccLastAtPosition >= 0 && _ccLastAtPosition <= text.Length)
+        {
+            string before    = text[.._ccLastAtPosition];
+            string after     = caret <= text.Length ? text[caret..] : "";
+            string separator = before.TrimEnd().Length > 0 ? "; " : "";
+            string inserted  = before.TrimEnd() + separator + contactName + "; " + after.TrimStart();
+            _txtCc.TextChanged -= CcTextBox_TextChanged;  // suppress re-trigger
+            _txtCc.Text         = inserted;
+            _txtCc.CaretIndex   = (before.TrimEnd() + separator + contactName + "; ").Length;
+            _txtCc.TextChanged += CcTextBox_TextChanged;
+        }
+
+        _ccLastAtPosition = -1;
+        _ccPopup.IsOpen   = false;
+        _txtCc.Focus();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     //  Event handlers
     // ──────────────────────────────────────────────────────────────────────
     private void BrowseAttachment_Click(object sender, RoutedEventArgs e)
@@ -466,6 +644,7 @@ Best regards.";
         {
             SendViaOutlook(
                 _txtTo.Text,
+                _txtCc.Text,
                 _txtSubject.Text,
                 _txtBody.Text,
                 ResolvedAttachmentPath);
@@ -488,7 +667,7 @@ Best regards.";
         IntPtr pvReserved,
         [MarshalAs(UnmanagedType.IUnknown)] out object ppunk);
 
-    private static void SendViaOutlook(string to, string subject, string body, string attachmentPath)
+    private static void SendViaOutlook(string to, string cc, string subject, string body, string attachmentPath)
     {
         // Use late binding (dynamic) so no Office PIA / interop assembly is required at runtime.
         // Works with classic Outlook 2016/2019/2021 and new Microsoft 365 Outlook.
@@ -524,12 +703,25 @@ Best regards.";
         // olMailItem = 0
         dynamic mail = app.CreateItem(0);
 
+        // olTo = 1
         foreach (var addr in to.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
         {
             string a = addr.Trim();
             if (!string.IsNullOrEmpty(a))
-                mail.Recipients.Add(a);
+                mail.Recipients.Add(a).Type = 1;
         }
+
+        // olCC = 2
+        if (!string.IsNullOrWhiteSpace(cc))
+        {
+            foreach (var addr in cc.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string a = addr.TrimStart('@').Trim();
+                if (!string.IsNullOrEmpty(a))
+                    mail.Recipients.Add(a).Type = 2;
+            }
+        }
+
         mail.Recipients.ResolveAll();
 
         mail.Subject  = subject;
