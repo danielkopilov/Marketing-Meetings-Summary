@@ -104,6 +104,7 @@ public class TemplateData
     public string DeliveryDate { get; set; } = "";
     public string DesignDueDate { get; set; } = "";
     public List<string> Participants { get; set; } = new();
+    public string ProjectManager { get; set; } = "";
     public string SellingPrice { get; set; } = "";
     public string MaterialCost { get; set; } = "";
     public string ProjectHours { get; set; } = "";
@@ -240,6 +241,7 @@ public partial class MainWindow : Window
     private System.Windows.Controls.DatePicker dpDesignDueDate = new();
     private System.Windows.Controls.WrapPanel? participantsPanel;
     private System.Windows.Controls.TextBox? txtParticipantsInput;
+    private System.Windows.Controls.TextBox txtProjectManager = new();
     private System.Windows.Controls.TextBox txtReferenceOrder = new();
     private List<string> selectedParticipants = new();
 
@@ -270,6 +272,7 @@ public partial class MainWindow : Window
         try
         {
             InitializeComponent();
+            SetResponsiveWindowSize();
             InitializeConfigItems();
             InitializeTargets();
             InitializeQuestions();
@@ -285,6 +288,27 @@ public partial class MainWindow : Window
             MessageBox.Show($"Error initializing window: {ex.Message}\n\n{ex.StackTrace}", 
                 "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void SetResponsiveWindowSize()
+    {
+        // Size the window to ~80% of the current screen's working area so it
+        // fits any monitor and keeps the title bar/controls visible.
+        var workArea = System.Windows.SystemParameters.WorkArea;
+
+        double width = workArea.Width * 0.8;
+        double height = workArea.Height * 0.8;
+
+        // Respect minimum sizes so the UI stays usable on very small screens.
+        width = Math.Max(width, MinWidth);
+        height = Math.Max(height, MinHeight);
+
+        // Never exceed the available work area.
+        width = Math.Min(width, workArea.Width);
+        height = Math.Min(height, workArea.Height);
+
+        Width = width;
+        Height = height;
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -422,8 +446,11 @@ public partial class MainWindow : Window
 
         int row = 0;
 
-        // Participants FIRST - spans full width
-        AddParticipantsFieldWithAutocomplete(orderFormGrid, "Participants:", participantsPanel, txtParticipantsInput, row++, 0, 3);
+        // Meeting Participants - 1/3 width (same as Order Number)
+        AddParticipantsFieldWithAutocomplete(orderFormGrid, "Meeting Participants:", participantsPanel, txtParticipantsInput, row, 0, 1);
+
+        // Project Manager - free text, spans remaining 2 columns
+        AddFormField(orderFormGrid, "Project Manager:", txtProjectManager, row++, 1, 2);
 
         // Order Number - spans 1 column (1/3 width)
         AddFormField(orderFormGrid, "Order Number:", txtOrderNumber, row, 0, 1);
@@ -563,6 +590,11 @@ public partial class MainWindow : Window
         AddFormField(marketingFormGrid, "Project Hours:", txtProjectHours, marketingRow, 0, 1);
         AddFormField(marketingFormGrid, "Penalties:", txtPenalties, marketingRow++, 1, 1);
 
+        // Restrict Selling Price, Material Cost and Project Hours to numeric values only
+        AttachNumericValidation(txtSellingPrice);
+        AttachNumericValidation(txtMaterialCost);
+        AttachNumericValidation(txtProjectHours);
+
         // D.O rated checkbox
         AddCheckBoxField(marketingFormGrid, "D.O rated", chkDORated, marketingRow++, 0, 1);
 
@@ -630,6 +662,53 @@ public partial class MainWindow : Window
         System.Windows.Controls.Grid.SetColumn(fieldStack, column);
         System.Windows.Controls.Grid.SetColumnSpan(fieldStack, columnSpan);
         grid.Children.Add(fieldStack);
+    }
+
+    // Allows only numeric input (digits and a single decimal separator) in a TextBox.
+    private void AttachNumericValidation(System.Windows.Controls.TextBox textBox)
+    {
+        textBox.PreviewTextInput += (s, e) =>
+        {
+            e.Handled = !IsNumericTextAllowed(textBox, e.Text);
+        };
+
+        System.Windows.DataObject.AddPastingHandler(textBox, (s, e) =>
+        {
+            if (e.DataObject.GetDataPresent(typeof(string)))
+            {
+                string pasted = (string)e.DataObject.GetData(typeof(string));
+                if (!IsNumericTextAllowed(textBox, pasted))
+                    e.CancelCommand();
+            }
+            else
+            {
+                e.CancelCommand();
+            }
+        });
+
+        // Block the space key (PreviewTextInput does not always catch it).
+        textBox.PreviewKeyDown += (s, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Space)
+                e.Handled = true;
+        };
+    }
+
+    // Validates that applying candidateText to the textbox keeps it a valid decimal number.
+    private static bool IsNumericTextAllowed(System.Windows.Controls.TextBox textBox, string candidateText)
+    {
+        string proposed = textBox.Text
+            .Remove(textBox.SelectionStart, textBox.SelectionLength)
+            .Insert(textBox.SelectionStart, candidateText);
+
+        if (proposed == "." || proposed == ",")
+            return true;
+
+        return double.TryParse(
+            proposed.Replace(',', '.'),
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out _);
     }
 
     private void ApplyModernControlStyle(System.Windows.Controls.Control control)
@@ -4368,6 +4447,7 @@ public partial class MainWindow : Window
             {
                 GenerateFromTemplate(saveDialog.FileName);
                 _lastExportedPath = saveDialog.FileName;
+
                 MessageBox.Show($"Document successfully created!\n\nSaved to:\n{saveDialog.FileName}",
                     "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -4615,6 +4695,7 @@ public partial class MainWindow : Window
         }
         ReplacePlaceholder("Penalties",      txtPenalties.Text);
         ReplacePlaceholder("Reference Order", txtReferenceOrder.Text);
+        ReplacePlaceholder("Project Manager", txtProjectManager.Text);
         InjectAfterLabelRun("D.O Rated:", chkDORated.IsChecked == true ? "Yes" : "No");
 
         ReplacePlaceholder("Delivery Date",
@@ -4703,67 +4784,78 @@ public partial class MainWindow : Window
             .Where(kv => kv.Value.IsChecked == true)
             .Select(kv =>
             {
+                // When the Configuration section hasn't been visited since a template load,
+                // inline controls are null. Fall back to _pendingTemplateConfig for those values.
+                var _p = _pendingTemplateConfig;
                 string config;
                 if (kv.Key == "B.B")
                 {
                     var parts = new List<string>();
-                    var bt = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
-                    var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
+                    var bt = _bbTypeComboBox?.SelectedItem?.ToString() ?? _p?.BBType ?? "";
+                    var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? _p?.BBSize ?? "";
                     if (!string.IsNullOrEmpty(bt)) parts.Add($"Type: {bt}");
                     if (!string.IsNullOrEmpty(bs)) parts.Add($"Size: {bs}");
                     config = string.Join(", ", parts);
                 }
                 else if (kv.Key == "I.S")
                 {
-                    var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? "";
+                    var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? _p?.ISAperture ?? "";
                     config = !string.IsNullOrEmpty(ap) ? $"Exit Aperture: {ap}" : "";
                 }
                 else if (kv.Key == "Backlight")
                 {
-                    var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? "";
+                    var blt = _backlightTypeComboBox?.SelectedItem?.ToString() ?? _p?.BacklightType ?? "";
                     config = !string.IsNullOrEmpty(blt) ? $"Type: {blt}" : "";
                 }
                 else if (kv.Key == "Frame Grabbers")
                 {
                     var fgParts = new List<string>();
-                    foreach (var fgCb in new[] { _frameGrabbersComboBox, _frameGrabbersComboBox2, _frameGrabbersComboBox3, _frameGrabbersComboBox4 })
+                    var fgVals = new[]
                     {
-                        var v = fgCb?.SelectedItem?.ToString() ?? "";
+                        _frameGrabbersComboBox?.SelectedItem?.ToString()  ?? _p?.FrameGrabber1 ?? "",
+                        _frameGrabbersComboBox2?.SelectedItem?.ToString() ?? _p?.FrameGrabber2 ?? "",
+                        _frameGrabbersComboBox3?.SelectedItem?.ToString() ?? _p?.FrameGrabber3 ?? "",
+                        _frameGrabbersComboBox4?.SelectedItem?.ToString() ?? _p?.FrameGrabber4 ?? "",
+                    };
+                    foreach (var v in fgVals)
                         if (!string.IsNullOrEmpty(v)) fgParts.Add(v);
-                    }
                     config = string.Join(", ", fgParts);
                 }
                 else if (kv.Key == "Gimbal")
                 {
                     var parts = new List<string>();
-                    var sz = _gimbalSizeTextBox?.Text.Trim() ?? "";
+                    var sz = _gimbalSizeTextBox?.Text.Trim() ?? _p?.GimbalSize ?? "";
                     if (!string.IsNullOrEmpty(sz)) parts.Add($"Size: {sz} Inches");
-                    if (_gimbalJoystickCheckBox?.IsChecked == true) parts.Add("+Joystick");
-                    var lc = _gimbalLoadCapacityTextBox?.Text.Trim() ?? "";
+                    var joystick = _gimbalJoystickCheckBox?.IsChecked ?? _p?.GimbalJoystick ?? false;
+                    if (joystick) parts.Add("+Joystick");
+                    var lc = _gimbalLoadCapacityTextBox?.Text.Trim() ?? _p?.GimbalLoadCapacity ?? "";
                     if (!string.IsNullOrEmpty(lc)) parts.Add($"Load Capacity: {lc} KG");
-                    var acc = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? "";
+                    var acc = _gimbalAccuracyComboBox?.SelectedItem?.ToString() ?? _p?.GimbalAccuracy ?? "";
                     if (!string.IsNullOrEmpty(acc)) parts.Add($"Accuracy: {acc}");
                     config = string.Join(", ", parts);
                 }
                 else if (kv.Key == "LOS alignment target")
                 {
-                    config = (_losHalogenCheckBox?.IsChecked == true) ? "+Halogen" : "";
+                    var halogen = _losHalogenCheckBox?.IsChecked ?? _p?.LosHalogen ?? false;
+                    config = halogen ? "+Halogen" : "";
                 }
                 else if (kv.Key == "Rackmount")
                 {
                     var parts = new List<string>();
-                    if (_rackmountMonitorArmCheckBox?.IsChecked == true) parts.Add("+Monitor Arm");
-                    var rh = _rackmountHeightTextBox?.Text.Trim() ?? "";
+                    var monArm = _rackmountMonitorArmCheckBox?.IsChecked ?? _p?.RackmountMonitorArm ?? false;
+                    if (monArm) parts.Add("+Monitor Arm");
+                    var rh = _rackmountHeightTextBox?.Text.Trim() ?? _p?.RackmountHeight ?? "";
                     if (!string.IsNullOrEmpty(rh)) parts.Add($"Height: {rh} U");
                     config = string.Join(", ", parts);
                 }
                 else if (kv.Key == "Optical Table")
                 {
                     var parts = new List<string>();
-                    if (_opticalTableActiveCheckBox?.IsChecked == true) parts.Add("Active");
-                    var w = _opticalTableWidthTextBox?.Text.Trim() ?? "";
-                    var l = _opticalTableLengthTextBox?.Text.Trim() ?? "";
-                    var h = _opticalTableHeightTextBox?.Text.Trim() ?? "";
+                    var active = _opticalTableActiveCheckBox?.IsChecked ?? _p?.OpticalTableActive ?? false;
+                    if (active) parts.Add("Active");
+                    var w = _opticalTableWidthTextBox?.Text.Trim()  ?? _p?.OpticalTableWidth  ?? "";
+                    var l = _opticalTableLengthTextBox?.Text.Trim() ?? _p?.OpticalTableLength ?? "";
+                    var h = _opticalTableHeightTextBox?.Text.Trim() ?? _p?.OpticalTableHeight ?? "";
                     if (!string.IsNullOrEmpty(w)) parts.Add($"Width: {w}");
                     if (!string.IsNullOrEmpty(l)) parts.Add($"Length: {l}");
                     if (!string.IsNullOrEmpty(h)) parts.Add($"Height: {h}");
@@ -4772,12 +4864,36 @@ public partial class MainWindow : Window
                 else if (kv.Key == "VRS")
                 {
                     var vrsParts = new List<string>();
-                    foreach (var vrsCb in new[] { _vrsComboBox1, _vrsComboBox2, _vrsComboBox3, _vrsComboBox4 })
+                    var vrsVals = new[]
                     {
-                        var v = vrsCb?.SelectedItem?.ToString() ?? "";
+                        _vrsComboBox1?.SelectedItem?.ToString() ?? _p?.Vrs1 ?? "",
+                        _vrsComboBox2?.SelectedItem?.ToString() ?? _p?.Vrs2 ?? "",
+                        _vrsComboBox3?.SelectedItem?.ToString() ?? _p?.Vrs3 ?? "",
+                        _vrsComboBox4?.SelectedItem?.ToString() ?? _p?.Vrs4 ?? "",
+                    };
+                    foreach (var v in vrsVals)
                         if (!string.IsNullOrEmpty(v) && v != "NA") vrsParts.Add(v);
-                    }
                     config = string.Join(", ", vrsParts);
+                }
+                else if (kv.Key == "Source Stage")
+                {
+                    var manual = _sourceStageManualCheckBox?.IsChecked ?? _p?.SourceStageManual ?? false;
+                    config = manual ? "Manual" : "";
+                }
+                else if (kv.Key == "XY Stage")
+                {
+                    var manual = _xyStageManualCheckBox?.IsChecked ?? _p?.XyStageManual ?? false;
+                    config = manual ? "Manual" : "";
+                }
+                else if (kv.Key == "NewPort Stage")
+                {
+                    var mw = _maxWeightTextBox?.Text.Trim() ?? _p?.MaxWeight ?? "";
+                    config = !string.IsNullOrEmpty(mw) ? $"Max Weight: {mw} KG" : "";
+                }
+                else if (kv.Key == "Focus Stage")
+                {
+                    var fd = _finiteDistance1TextBox?.Text.Trim() ?? _p?.FiniteDistance ?? "";
+                    config = !string.IsNullOrEmpty(fd) ? $"Finite Distance: {fd} m" : "";
                 }
                 else
                 {
@@ -4838,12 +4954,33 @@ public partial class MainWindow : Window
         // Helper: clone a table cell's tcPr and fill it with plain (non-bold) text — used for Configuration and Notes columns
         XElement CloneConfigCell(XElement sourceCell, string text) => CloneNoteCell(sourceCell, text);
 
+        // Helper: upgrade all w:tcBorders entries in a tcPr so they render clearly in PDF.
+        // The template uses sz=2 / color=AAAAAA which is invisible when Word exports to PDF.
+        void FixCellBorders(XElement tcPr)
+        {
+            var tcBorders = tcPr.Element(w + "tcBorders");
+            if (tcBorders == null) return;
+            foreach (var border in tcBorders.Elements())
+            {
+                // Change hairline grey to solid black, sz=4 (½pt)
+                border.SetAttributeValue(w + "val",   "single");
+                border.SetAttributeValue(w + "sz",    "4");
+                border.SetAttributeValue(w + "space", "0");
+                border.SetAttributeValue(w + "color", "auto");
+            }
+        }
+
         // Helper: clone a table cell's tcPr and fill it with plain (non-bold) text — used for Notes column
         XElement CloneNoteCell(XElement sourceCell, string text)
         {
             var tcPr = sourceCell.Element(w + "tcPr");
             var cell = new XElement(w + "tc");
-            if (tcPr != null) cell.Add(new XElement(tcPr));
+            if (tcPr != null)
+            {
+                var cloned = new XElement(tcPr);
+                FixCellBorders(cloned);
+                cell.Add(cloned);
+            }
             var para = new XElement(w + "p",
                 new XElement(w + "pPr",
                     new XElement(w + "rPr",
@@ -4859,7 +4996,12 @@ public partial class MainWindow : Window
         {
             var tcPr = sourceCell.Element(w + "tcPr");
             var cell = new XElement(w + "tc");
-            if (tcPr != null) cell.Add(new XElement(tcPr));
+            if (tcPr != null)
+            {
+                var cloned = new XElement(tcPr);
+                FixCellBorders(cloned);
+                cell.Add(cloned);
+            }
             var para = new XElement(w + "p",
                 new XElement(w + "pPr",
                     new XElement(w + "rPr",
@@ -4876,6 +5018,13 @@ public partial class MainWindow : Window
         {
             var templateRow = configRun.Ancestors(w + "tr").First();
             var cells = templateRow.Elements(w + "tc").ToList(); // [0]=Component, [1]=Configuration, [2]=Notes
+
+            // Fix borders on the template row's cells so they show in PDF
+            foreach (var cell in cells)
+            {
+                var tcPr = cell.Element(w + "tcPr");
+                if (tcPr != null) FixCellBorders(tcPr);
+            }
 
             if (configItems.Count == 0)
             {
@@ -5360,6 +5509,7 @@ public partial class MainWindow : Window
             ReferenceOrder     = txtReferenceOrder.Text,
             DeliveryDate       = dpDeliveryDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
             DesignDueDate      = dpDesignDueDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
+            ProjectManager     = txtProjectManager.Text,
             Participants       = new List<string>(selectedParticipants),
             SellingPrice       = txtSellingPrice.Text,
             MaterialCost       = txtMaterialCost.Text,
@@ -5408,6 +5558,13 @@ public partial class MainWindow : Window
 
         return data;
     }
+
+    /// <summary>
+    /// Returns the current form data as a <see cref="TemplateData"/> snapshot.
+    /// Called by the Projects Managers Control Center after the dialog closes
+    /// so it can apply the kickoff data to a project.
+    /// </summary>
+    public TemplateData GetCurrentTemplateData() => CollectTemplateData();
 
     private void SaveTemplate()
     {
@@ -5509,6 +5666,7 @@ public partial class MainWindow : Window
         txtProjectHours.Text   = data.ProjectHours;
         txtPenalties.Text      = data.Penalties;
         chkDORated.IsChecked   = data.DORated;
+        txtProjectManager.Text = data.ProjectManager;
 
         if (DateTime.TryParse(data.DeliveryDate, out var dd))
             dpDeliveryDate.SelectedDate = dd;

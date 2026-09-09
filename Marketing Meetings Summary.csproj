@@ -22,4 +22,14 @@
     <Resource Include="logo.png" />
   </ItemGroup>
 
+  <!-- The template XML must be present next to the executable at runtime.
+       Marking it as Content with CopyToOutputDirectory ensures it is copied
+       both when this project runs standalone and when it is referenced from
+       the Projects Managers Control Center (which becomes the host BaseDirectory). -->
+  <ItemGroup>
+    <Content Include="Marketing_Meeting_Summary_Template.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
