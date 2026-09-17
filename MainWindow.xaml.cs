@@ -19,6 +19,7 @@ public class TargetItem : INotifyPropertyChanged
     private string _type = "";
     private string _qty = "";
     private string _details = "";
+    private string _count = "1";
 
     public string Type
     {
@@ -36,6 +37,19 @@ public class TargetItem : INotifyPropertyChanged
     {
         get => _details;
         set { _details = value; OnPropertyChanged(nameof(Details)); }
+    }
+
+    public string Count
+    {
+        get => _count;
+        set { _count = value; OnPropertyChanged(nameof(Count)); }
+    }
+
+    private string _note = "";
+    public string Note
+    {
+        get => _note;
+        set { _note = value; OnPropertyChanged(nameof(Note)); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -2289,15 +2303,16 @@ public partial class MainWindow : Window
         var contentStack = new System.Windows.Controls.StackPanel();
         contentContainer.Child = contentStack;
 
-        // Column Headers (#, Target Name, Size, Unit, Actions)
+        // Column Headers (#, Target Name, Qty, Size, Unit, Actions)
         var headersGrid = new System.Windows.Controls.Grid
         {
             Margin = new WpfThickness(0, 0, 0, 2)
         };
         headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(28) });  // #
         headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Target Name
-        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Size
-        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Unit
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(70) });  // Qty
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(120) }); // Size
+        headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(120) }); // Unit
         headersGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) });  // Actions
 
         var numHeader = new System.Windows.Controls.TextBlock
@@ -2327,6 +2342,20 @@ public partial class MainWindow : Window
         System.Windows.Controls.Grid.SetColumn(nameHeader, 1);
         headersGrid.Children.Add(nameHeader);
 
+        var qtyHeader = new System.Windows.Controls.TextBlock
+        {
+            Text = "Qty",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
+            Margin = new WpfThickness(4, 0, 4, 0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
+        };
+        System.Windows.Controls.Grid.SetColumn(qtyHeader, 2);
+        headersGrid.Children.Add(qtyHeader);
+
         var sizeHeader = new System.Windows.Controls.TextBlock
         {
             Text = "Size",
@@ -2338,7 +2367,7 @@ public partial class MainWindow : Window
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(sizeHeader, 2);
+        System.Windows.Controls.Grid.SetColumn(sizeHeader, 3);
         headersGrid.Children.Add(sizeHeader);
 
         var unitHeader = new System.Windows.Controls.TextBlock
@@ -2352,7 +2381,7 @@ public partial class MainWindow : Window
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(unitHeader, 3);
+        System.Windows.Controls.Grid.SetColumn(unitHeader, 4);
         headersGrid.Children.Add(unitHeader);
 
         var actionsHeader = new System.Windows.Controls.TextBlock
@@ -2362,11 +2391,11 @@ public partial class MainWindow : Window
             FontWeight = System.Windows.FontWeights.SemiBold,
             Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(107, 114, 128)),
-            Margin = new WpfThickness(8, 0, 0, 0),
+            Margin = new WpfThickness(0, 0, 0, 0),
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center
         };
-        System.Windows.Controls.Grid.SetColumn(actionsHeader, 4);
+        System.Windows.Controls.Grid.SetColumn(actionsHeader, 5);
         headersGrid.Children.Add(actionsHeader);
 
         contentStack.Children.Add(headersGrid);
@@ -2374,9 +2403,9 @@ public partial class MainWindow : Window
         // Initialize with 3 empty targets (only if targets list is empty)
         if (_targets.Count == 0)
         {
-            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm" });
-            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm" });
-            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm" });
+            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm", Count = "1" });
+            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm", Count = "1" });
+            _targets.Add(new TargetItem { Type = "", Qty = "", Details = "mm", Count = "1" });
         }
 
         // Create target rows
@@ -2406,11 +2435,12 @@ public partial class MainWindow : Window
         };
 
         var grid = new System.Windows.Controls.Grid();
-        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(28) });  // #
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(28) });   // #
         grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Target Name
-        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Size
-        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(150) }); // Unit
-        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) });  // Actions
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(70) });   // Qty
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(120) });  // Size
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(120) });  // Unit
+        grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(80) });   // Actions
 
         // Row number label
         var numberLabel = new System.Windows.Controls.TextBlock
@@ -2427,26 +2457,72 @@ public partial class MainWindow : Window
         System.Windows.Controls.Grid.SetColumn(numberLabel, 0);
         grid.Children.Add(numberLabel);
 
-        // Target Name TextBox (bordered)
-        var nameTextBox = new System.Windows.Controls.TextBox
+        // Target Name ComboBox
+        var nameComboWrapper = new WpfBorder
         {
-            Text = target.Type,
-            FontSize = 13,
-            Height = 32,
-            Padding = new WpfThickness(8, 0, 8, 0),
+            CornerRadius = new CornerRadius(6),
             BorderBrush = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromRgb(209, 213, 219)),
-            Background = System.Windows.Media.Brushes.White,
             BorderThickness = new WpfThickness(1),
+            Background = System.Windows.Media.Brushes.White,
             Margin = new WpfThickness(0, 0, 8, 0),
-            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+            Height = 32
         };
-        ApplyRoundedTextBoxTemplate(nameTextBox);
+        var nameComboBox = new System.Windows.Controls.ComboBox
+        {
+            FontSize = 13,
+            BorderThickness = new WpfThickness(0),
+            Background = System.Windows.Media.Brushes.Transparent,
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+            Padding = new WpfThickness(6, 0, 2, 0),
+            IsEditable = false
+        };
+        foreach (var targetName in new[]
+        {
+            "Boresight Laser to CCD", "Boresight Laser to IR", "Boresight IR to CCD",
+            "LOS Alignment Target", "4Bar", "CROSS", "USAF  Positive", "USAF  Negative",
+            "STEP Horizontal", "STEP Vertical", "Square", "Pin Hole"
+        })
+            nameComboBox.Items.Add(targetName);
+        if (!string.IsNullOrEmpty(target.Type) && nameComboBox.Items.Contains(target.Type))
+            nameComboBox.SelectedItem = target.Type;
+        else if (!string.IsNullOrEmpty(target.Type))
+        {
+            nameComboBox.Items.Insert(0, target.Type);
+            nameComboBox.SelectedIndex = 0;
+        }
+        nameComboBox.SelectionChanged += (s, e) => target.Type = nameComboBox.SelectedItem?.ToString() ?? "";
+        nameComboWrapper.Child = nameComboBox;
+        System.Windows.Controls.Grid.SetColumn(nameComboWrapper, 1);
+        grid.Children.Add(nameComboWrapper);
 
-        nameTextBox.TextChanged += (s, e) => target.Type = nameTextBox.Text;
-
-        System.Windows.Controls.Grid.SetColumn(nameTextBox, 1);
-        grid.Children.Add(nameTextBox);
+        // Qty ComboBox (1-10, default 1)
+        var qtyComboWrapper = new WpfBorder
+        {
+            CornerRadius = new CornerRadius(6),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(209, 213, 219)),
+            BorderThickness = new WpfThickness(1),
+            Background = System.Windows.Media.Brushes.White,
+            Margin = new WpfThickness(0, 0, 8, 0),
+            Height = 32
+        };
+        var qtyComboBox = new System.Windows.Controls.ComboBox
+        {
+            FontSize = 13,
+            BorderThickness = new WpfThickness(0),
+            Background = System.Windows.Media.Brushes.Transparent,
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+            HorizontalContentAlignment = System.Windows.HorizontalAlignment.Center,
+            Padding = new WpfThickness(6, 0, 2, 0)
+        };
+        for (int n = 1; n <= 10; n++) qtyComboBox.Items.Add(n.ToString());
+        qtyComboBox.SelectedItem = string.IsNullOrEmpty(target.Count) ? "1" : target.Count;
+        if (qtyComboBox.SelectedItem == null) qtyComboBox.SelectedIndex = 0;
+        qtyComboBox.SelectionChanged += (s, e) => target.Count = qtyComboBox.SelectedItem?.ToString() ?? "1";
+        qtyComboWrapper.Child = qtyComboBox;
+        System.Windows.Controls.Grid.SetColumn(qtyComboWrapper, 2);
+        grid.Children.Add(qtyComboWrapper);
 
         // Size TextBox (bordered)
         var sizeTextBox = new System.Windows.Controls.TextBox
@@ -2463,14 +2539,11 @@ public partial class MainWindow : Window
             VerticalContentAlignment = System.Windows.VerticalAlignment.Center
         };
         ApplyRoundedTextBoxTemplate(sizeTextBox);
-
         sizeTextBox.TextChanged += (s, e) => target.Qty = sizeTextBox.Text;
-
-        System.Windows.Controls.Grid.SetColumn(sizeTextBox, 2);
+        System.Windows.Controls.Grid.SetColumn(sizeTextBox, 3);
         grid.Children.Add(sizeTextBox);
 
-        // Unit ComboBox (borderless, inside the row border)
-        // Wrap ComboBox in a rounded Border for the visual style
+        // Unit ComboBox
         var comboWrapper = new WpfBorder
         {
             CornerRadius = new CornerRadius(6),
@@ -2481,7 +2554,6 @@ public partial class MainWindow : Window
             Margin = new WpfThickness(0, 0, 8, 0),
             Height = 32
         };
-
         var unitComboBox = new System.Windows.Controls.ComboBox
         {
             FontSize = 13,
@@ -2498,20 +2570,21 @@ public partial class MainWindow : Window
         unitComboBox.Items.Add("Na");
         unitComboBox.SelectedItem = target.Details ?? "mm";
         unitComboBox.SelectionChanged += (s, e) => target.Details = unitComboBox.SelectedItem?.ToString() ?? "mm";
-
-        System.Windows.Controls.Grid.SetColumn(comboWrapper, 3);
+        System.Windows.Controls.Grid.SetColumn(comboWrapper, 4);
         grid.Children.Add(comboWrapper);
 
         // Delete Button (trash icon, gray color)
+        var trashIconFill = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromRgb(107, 114, 128));
         var deleteButton = new System.Windows.Controls.Button
         {
-            Content = "🗑️",
-            FontSize = 16,
-            Width = 32,
-            Height = 32,
+            Content = MakeTrashIcon(trashIconFill),
+            FontSize = 13,
+            Width = 22,
+            Height = 22,
             Background = System.Windows.Media.Brushes.Transparent,
             Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(107, 114, 128)), // Gray color
+                System.Windows.Media.Color.FromRgb(107, 114, 128)),
             BorderThickness = new WpfThickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
@@ -2533,20 +2606,60 @@ public partial class MainWindow : Window
 
         deleteButton.MouseEnter += (s, e) =>
         {
-            deleteButton.Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(239, 68, 68)); // Red on hover
+            if (deleteButton.Content is System.Windows.Shapes.Path p)
+                p.Fill = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(239, 68, 68));
         };
 
         deleteButton.MouseLeave += (s, e) =>
         {
-            deleteButton.Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(107, 114, 128)); // Gray default
+            if (deleteButton.Content is System.Windows.Shapes.Path p)
+                p.Fill = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(107, 114, 128));
         };
 
         deleteButton.Click += (s, e) => RemoveTargetRow(target, rowBorder, container);
 
-        System.Windows.Controls.Grid.SetColumn(deleteButton, 4);
-        grid.Children.Add(deleteButton);
+        // Note Button
+        bool hasTargetNote = !string.IsNullOrWhiteSpace(target.Note);
+        var noteBtnFill = hasTargetNote
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235))
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(160, 174, 192));
+        var noteBtn = new System.Windows.Controls.Button
+        {
+            Content = MakeSpeechBubbleIcon(noteBtnFill),
+            Width = 22,
+            Height = 22,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderThickness = new WpfThickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Padding = new WpfThickness(0),
+            ToolTip = hasTargetNote ? target.Note : "Add note"
+        };
+        var noteBtnTmpl = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+        var noteBorderF = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+        noteBorderF.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+        var noteContentF = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+        noteContentF.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+        noteContentF.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+        noteBorderF.AppendChild(noteContentF);
+        noteBtnTmpl.VisualTree = noteBorderF;
+        noteBtn.Template = noteBtnTmpl;
+        noteBtn.Click += (s, e) => ShowTargetNotePopup(noteBtn, target);
+
+        // Actions panel: note + delete side by side
+        var actionsPanel = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+        noteBtn.Margin = new WpfThickness(0, 0, 1, 0);
+        actionsPanel.Children.Add(noteBtn);
+        actionsPanel.Children.Add(deleteButton);
+        System.Windows.Controls.Grid.SetColumn(actionsPanel, 5);
+        grid.Children.Add(actionsPanel);
 
         rowBorder.Child = grid;
         return rowBorder;
@@ -2554,7 +2667,7 @@ public partial class MainWindow : Window
 
     private void AddNewTarget(System.Windows.Controls.Panel container)
     {
-        var newTarget = new TargetItem { Type = "", Qty = "", Details = "mm" };
+        var newTarget = new TargetItem { Type = "", Qty = "", Details = "mm", Count = "1" };
         _targets.Add(newTarget);
 
         var targetRow = CreateTargetRow(newTarget, container, _targets.Count);
@@ -4106,6 +4219,27 @@ public partial class MainWindow : Window
         };
     }
 
+    private static System.Windows.Shapes.Path MakeTrashIcon(System.Windows.Media.Brush fill)
+    {
+        // Clean trash can icon using filled geometry
+        var geometry = System.Windows.Media.Geometry.Parse(
+            "M 5.5,0 C 4.7,0 4,0.7 4,1.5 L 1,1.5 C 0.7,1.5 0.5,1.7 0.5,2 C 0.5,2.3 0.7,2.5 1,2.5 L 1.5,2.5 L 2.2,12.6 C 2.3,13.4 3,14 3.8,14 L 10.2,14 C 11,14 11.7,13.4 11.8,12.6 L 12.5,2.5 L 13,2.5 C 13.3,2.5 13.5,2.3 13.5,2 C 13.5,1.7 13.3,1.5 13,1.5 L 10,1.5 C 10,0.7 9.3,0 8.5,0 Z " +
+            "M 5.5,1 L 8.5,1 C 8.8,1 9,1.2 9,1.5 L 5,1.5 C 5,1.2 5.2,1 5.5,1 Z " +
+            "M 5,4.5 C 5,4.2 5.2,4 5.5,4 C 5.8,4 6,4.2 6,4.5 L 6,11.5 C 6,11.8 5.8,12 5.5,12 C 5.2,12 5,11.8 5,11.5 Z " +
+            "M 7,4.5 C 7,4.2 7.2,4 7.5,4 C 7.8,4 8,4.2 8,4.5 L 8,11.5 C 8,11.8 7.8,12 7.5,12 C 7.2,12 7,11.8 7,11.5 Z " +
+            "M 9,4.5 C 9,4.2 9.2,4 9.5,4 C 9.8,4 10,4.2 10,4.5 L 10,11.5 C 10,11.8 9.8,12 9.5,12 C 9.2,12 9,11.8 9,11.5 Z");
+        return new System.Windows.Shapes.Path
+        {
+            Data = geometry,
+            Fill = fill,
+            Width = 14,
+            Height = 14,
+            Stretch = System.Windows.Media.Stretch.Uniform,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
+        };
+    }
+
     // Wraps a checkbox in a horizontal StackPanel together with a speech-bubble note button.
     private System.Windows.Controls.StackPanel WrapCheckBoxWithNoteButton(WpfCheckBox checkBox, string itemKey)
     {
@@ -4312,6 +4446,146 @@ public partial class MainWindow : Window
         noteTextBox.SelectAll();
     }
 
+    private void ShowTargetNotePopup(System.Windows.Controls.Button btn, TargetItem target)
+    {
+        var popup = new System.Windows.Controls.Primitives.Popup
+        {
+            PlacementTarget = btn,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            StaysOpen = false,
+            AllowsTransparency = true
+        };
+
+        var popupBorder = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(180, 190, 205)),
+            BorderThickness = new WpfThickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new WpfThickness(0),
+            Width = 260,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                ShadowDepth = 2,
+                BlurRadius = 8,
+                Opacity = 0.18,
+                Color = System.Windows.Media.Color.FromRgb(0, 0, 0)
+            }
+        };
+
+        var outerStack = new System.Windows.Controls.StackPanel();
+
+        var titleBar = new WpfBorder
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(220, 230, 242)),
+            Padding = new WpfThickness(10, 4, 10, 4),
+            CornerRadius = new CornerRadius(5, 5, 0, 0)
+        };
+        var titleText = new System.Windows.Controls.TextBlock
+        {
+            Text = $"Notes for {(string.IsNullOrWhiteSpace(target.Type) ? "target" : target.Type)}",
+            FontSize = 12,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(30, 41, 59))
+        };
+        titleBar.Child = titleText;
+        outerStack.Children.Add(titleBar);
+
+        var bodyStack = new System.Windows.Controls.StackPanel
+        {
+            Margin = new WpfThickness(10, 8, 10, 6)
+        };
+
+        var noteTextBox = new System.Windows.Controls.TextBox
+        {
+            Text = target.Note ?? "",
+            FontSize = 13,
+            Height = 70,
+            Padding = new WpfThickness(6, 4, 6, 4),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(180, 190, 205)),
+            BorderThickness = new WpfThickness(1),
+            AcceptsReturn = true,
+            TextWrapping = System.Windows.TextWrapping.Wrap,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            Margin = new WpfThickness(0, 0, 0, 10)
+        };
+        ApplyRoundedTextBoxTemplate(noteTextBox);
+        bodyStack.Children.Add(noteTextBox);
+
+        var buttonsRow = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+        };
+
+        System.Windows.Controls.Button MakeDialogBtn(string label)
+        {
+            var b = new System.Windows.Controls.Button
+            {
+                Content = label,
+                FontSize = 12,
+                Width = 62,
+                Height = 26,
+                Padding = new WpfThickness(0),
+                Background = System.Windows.Media.Brushes.White,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(30, 41, 59)),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(180, 190, 205)),
+                BorderThickness = new WpfThickness(1),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+            var tmpl = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.Button));
+            var bf = new System.Windows.FrameworkElementFactory(typeof(WpfBorder));
+            bf.SetValue(WpfBorder.BackgroundProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BackgroundProperty));
+            bf.SetValue(WpfBorder.BorderBrushProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderBrushProperty));
+            bf.SetValue(WpfBorder.BorderThicknessProperty, new System.Windows.TemplateBindingExtension(System.Windows.Controls.Control.BorderThicknessProperty));
+            bf.SetValue(WpfBorder.CornerRadiusProperty, new CornerRadius(4));
+            var cf = new System.Windows.FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+            cf.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, System.Windows.HorizontalAlignment.Center);
+            cf.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, System.Windows.VerticalAlignment.Center);
+            bf.AppendChild(cf);
+            tmpl.VisualTree = bf;
+            b.Template = tmpl;
+            return b;
+        }
+
+        var saveBtn   = MakeDialogBtn("Save");
+        var cancelBtn = MakeDialogBtn("Cancel");
+        cancelBtn.Margin = new WpfThickness(6, 0, 0, 0);
+
+        saveBtn.Click += (s2, e2) =>
+        {
+            target.Note = noteTextBox.Text;
+            bool saved = !string.IsNullOrWhiteSpace(noteTextBox.Text);
+            btn.ToolTip = saved ? noteTextBox.Text : "Add note";
+            if (btn.Content is System.Windows.Shapes.Path iconPath)
+            {
+                iconPath.Fill = saved
+                    ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235))
+                    : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(160, 174, 192));
+            }
+            popup.IsOpen = false;
+        };
+        cancelBtn.Click += (s2, e2) => { popup.IsOpen = false; };
+
+        buttonsRow.Children.Add(saveBtn);
+        buttonsRow.Children.Add(cancelBtn);
+        bodyStack.Children.Add(buttonsRow);
+
+        outerStack.Children.Add(bodyStack);
+        popupBorder.Child = outerStack;
+        popup.Child = popupBorder;
+        popup.IsOpen = true;
+
+        noteTextBox.Focus();
+        noteTextBox.SelectAll();
+    }
+
     private void InitializeTargets()
     {
         // Targets will be initialized with 3 empty items in LoadTargetsSection
@@ -4484,6 +4758,14 @@ public partial class MainWindow : Window
         return ms.ToArray();
     }
 
+    private static string FormatTargetName(TargetItem t) => t.Type;
+
+    private static string FormatTargetQty(TargetItem t)
+    {
+        var count = string.IsNullOrEmpty(t.Count) ? "1" : t.Count;
+        return $"{count}x";
+    }
+
     private void GenerateFromTemplate(string outputPath)
     {
         string templatePath = System.IO.Path.Combine(
@@ -4549,6 +4831,20 @@ public partial class MainWindow : Window
             r.Add(t);
         }
 
+        void MakeBoldBlackRun(XElement r, string value)
+        {
+            var rPr = r.Element(w + "rPr");
+            if (rPr == null) { rPr = new XElement(w + "rPr"); r.AddFirst(rPr); }
+            rPr.Elements(w + "color").Remove();
+            if (!rPr.Elements(w + "b").Any())  rPr.Add(new XElement(w + "b"));
+            if (!rPr.Elements(w + "bCs").Any()) rPr.Add(new XElement(w + "bCs"));
+            r.Elements(w + "t").Remove();
+            var t = new XElement(w + "t", value);
+            if (value.StartsWith(" ") || value.EndsWith(" "))
+                t.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+            r.Add(t);
+        }
+
         void ReplacePlaceholder(string placeholder, string value)
         {
             foreach (var container in allContainers)
@@ -4556,6 +4852,16 @@ public partial class MainWindow : Window
                 var run = container.Descendants(w + "r")
                     .FirstOrDefault(r => IsRedRun(r) && RunText(r) == placeholder);
                 if (run != null) { MakeBlackRun(run, value); break; }
+            }
+        }
+
+        void ReplaceBoldPlaceholder(string placeholder, string value)
+        {
+            foreach (var container in allContainers)
+            {
+                var run = container.Descendants(w + "r")
+                    .FirstOrDefault(r => IsRedRun(r) && RunText(r) == placeholder);
+                if (run != null) { MakeBoldBlackRun(run, value); break; }
             }
         }
 
@@ -4657,13 +4963,13 @@ public partial class MainWindow : Window
         ReplacePlaceholder("Customer Name",  txtCustomerName.Text);
         ReplacePlaceholder("Territory",      txtFinalCustomer.Text);
         ReplacePlaceholder("Paka Number",    txtPakaNumber.Text);
-        var systemTypeStr = string.Join(" ", new[]
+        var systemTypeStr = string.Join("-", new[]
         {
             cmbSystemType.SelectedItem?.ToString() ?? "",
             cmbSystemVariant.SelectedItem?.ToString() ?? "",
             cmbSystemAperture.SelectedItem?.ToString() ?? ""
         }.Where(s => !string.IsNullOrEmpty(s)));
-        ReplacePlaceholder("Project Type",   systemTypeStr);
+        ReplaceBoldPlaceholder("Project Type",   systemTypeStr);
         ReplacePlaceholder("Project Hours",  txtProjectHours.Text);
         ReplacePlaceholder("Selling Price",  txtSellingPrice.Text);
         ReplacePlaceholder("Material Cost",  txtMaterialCost.Text);
@@ -4717,20 +5023,26 @@ public partial class MainWindow : Window
             var templateRow = targetNameRun.Ancestors(w + "tr").First();
             // Save a pristine copy BEFORE modifying the first row, so clones get clean placeholders
             var pristineRow = new XElement(templateRow);
+            var qtyRun = templateRow.Descendants(w + "r")
+                .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Qty");
             var sizeUnitRun = templateRow.Descendants(w + "r")
                 .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size");
             var unitRun = templateRow.Descendants(w + "r")
                 .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size Unit");
+            var notesRun = templateRow.Descendants(w + "r")
+                .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Notes");
 
             if (targetItems.Count == 0)
             {
                 MakeBlackRun(targetNameRun, "");
+                if (qtyRun != null) MakeBlackRun(qtyRun, "");
                 if (sizeUnitRun != null) MakeBlackRun(sizeUnitRun, "");
                 if (unitRun != null) MakeBlackRun(unitRun, "");
+                if (notesRun != null) MakeBlackRun(notesRun, "");
             }
             else
             {
-                MakeBlackRun(targetNameRun, targetItems[0].Type);
+                MakeBlackRun(targetNameRun, FormatTargetName(targetItems[0]));
                 // Center-align the Target cell paragraph
                 var targetPara = targetNameRun.Parent;
                 if (targetPara != null)
@@ -4740,10 +5052,14 @@ public partial class MainWindow : Window
                     pPr.Elements(w + "jc").Remove();
                     pPr.Add(new XElement(w + "jc", new XAttribute(w + "val", "center")));
                 }
+                if (qtyRun != null)
+                    MakeBoldBlackRun(qtyRun, FormatTargetQty(targetItems[0]));
                 if (sizeUnitRun != null)
                     MakeBlackRun(sizeUnitRun, targetItems[0].Qty);
                 if (unitRun != null)
                     MakeBlackRun(unitRun, targetItems[0].Details);
+                if (notesRun != null)
+                    MakeBlackRun(notesRun, targetItems[0].Note ?? "");
 
                 var insertAfter = templateRow;
                 for (int i = 1; i < targetItems.Count; i++)
@@ -4752,13 +5068,17 @@ public partial class MainWindow : Window
                     var clonedRow = new XElement(pristineRow);
                     var cloneNameRun = clonedRow.Descendants(w + "r")
                         .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Target Name");
+                    var cloneQtyRun = clonedRow.Descendants(w + "r")
+                        .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Qty");
                     var cloneSizeRun = clonedRow.Descendants(w + "r")
                         .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size");
                     var cloneUnitRun = clonedRow.Descendants(w + "r")
                         .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Size Unit");
+                    var cloneNotesRun = clonedRow.Descendants(w + "r")
+                        .FirstOrDefault(r => IsRedRun(r) && RunText(r) == "Notes");
                     if (cloneNameRun != null)
                     {
-                        MakeBlackRun(cloneNameRun, targetItems[i].Type);
+                        MakeBlackRun(cloneNameRun, FormatTargetName(targetItems[i]));
                         var cloneTargetPara = cloneNameRun.Parent;
                         if (cloneTargetPara != null)
                         {
@@ -4768,10 +5088,14 @@ public partial class MainWindow : Window
                             pPr.Add(new XElement(w + "jc", new XAttribute(w + "val", "center")));
                         }
                     }
+                    if (cloneQtyRun != null)
+                        MakeBoldBlackRun(cloneQtyRun, FormatTargetQty(targetItems[i]));
                     if (cloneSizeRun != null)
                         MakeBlackRun(cloneSizeRun, targetItems[i].Qty);
                     if (cloneUnitRun != null)
                         MakeBlackRun(cloneUnitRun, targetItems[i].Details);
+                    if (cloneNotesRun != null)
+                        MakeBlackRun(cloneNotesRun, targetItems[i].Note ?? "");
                     insertAfter.AddAfterSelf(clonedRow);
                     insertAfter = clonedRow;
                 }
@@ -5282,7 +5606,7 @@ public partial class MainWindow : Window
             AddParagraph(body, headerText, 24, true);
 
             // System Type
-            var sysTypePh = string.Join(" ", new[] { cmbSystemType.SelectedItem?.ToString() ?? "", cmbSystemVariant.SelectedItem?.ToString() ?? "", cmbSystemAperture.SelectedItem?.ToString() ?? "" }.Where(s => !string.IsNullOrEmpty(s)));
+            var sysTypePh = string.Join("-", new[] { cmbSystemType.SelectedItem?.ToString() ?? "", cmbSystemVariant.SelectedItem?.ToString() ?? "", cmbSystemAperture.SelectedItem?.ToString() ?? "" }.Where(s => !string.IsNullOrEmpty(s)));
             if (!string.IsNullOrWhiteSpace(sysTypePh))
                 AddParagraph(body, sysTypePh, 24, true);
 
@@ -5546,7 +5870,7 @@ public partial class MainWindow : Window
             OpticalTableLength  = _opticalTableLengthTextBox?.Text                   ?? p?.OpticalTableLength  ?? "",
             OpticalTableHeight  = _opticalTableHeightTextBox?.Text                   ?? p?.OpticalTableHeight  ?? "",
             OpticalTableActive  = _opticalTableActiveCheckBox?.IsChecked             ?? p?.OpticalTableActive  ?? false,
-            Targets            = _targets.Select(t => new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details }).ToList(),
+            Targets            = _targets.Select(t => new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details, Count = t.Count, Note = t.Note }).ToList(),
             PmQuestions        = _questions.Select(q => q.Text).ToList(),
             MarketingQuestions = _marketingQuestions.Select(q => q.Text).ToList(),
             MarketingNotes     = _marketingNotes.Select(n => n.Text).ToList(),
@@ -5686,7 +6010,7 @@ public partial class MainWindow : Window
 
         _targets.Clear();
         foreach (var t in data.Targets)
-            _targets.Add(new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details });
+            _targets.Add(new TargetItem { Type = t.Type, Qty = t.Qty, Details = t.Details, Count = t.Count ?? "1", Note = t.Note ?? "" });
 
         _questions.Clear();
         for (int i = 0; i < data.PmQuestions.Count; i++)
