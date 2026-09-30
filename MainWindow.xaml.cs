@@ -119,6 +119,8 @@ public class TemplateData
     public string DesignDueDate { get; set; } = "";
     public List<string> Participants { get; set; } = new();
     public string ProjectManager { get; set; } = "";
+    public string TerritoryManager { get; set; } = "";
+    public string ContactPerson { get; set; } = "";
     public string SellingPrice { get; set; } = "";
     public string MaterialCost { get; set; } = "";
     public string ProjectHours { get; set; } = "";
@@ -183,6 +185,7 @@ public partial class MainWindow : Window
         "XY Stage",
         "Power Meter",
         "Energy Meter",
+        "Oscilloscope",
         "NewPort Stage",
         "Focus Stage",
         "VRS",
@@ -253,9 +256,12 @@ public partial class MainWindow : Window
     private System.Windows.Controls.TextBox txtPakaNumber = new();
     private System.Windows.Controls.DatePicker dpDeliveryDate = new();
     private System.Windows.Controls.DatePicker dpDesignDueDate = new();
+    private bool _designDueDateManuallySet = false;
+    private bool _suppressDesignDueAutoFill = false;
     private System.Windows.Controls.WrapPanel? participantsPanel;
     private System.Windows.Controls.TextBox? txtParticipantsInput;
     private System.Windows.Controls.TextBox txtProjectManager = new();
+    private System.Windows.Controls.TextBox txtTerritoryManager = new();
     private System.Windows.Controls.TextBox txtReferenceOrder = new();
     private List<string> selectedParticipants = new();
 
@@ -286,6 +292,8 @@ public partial class MainWindow : Window
         try
         {
             InitializeComponent();
+            MinWidth = 1100;
+            MinHeight = 720;
             SetResponsiveWindowSize();
             InitializeConfigItems();
             InitializeTargets();
@@ -463,8 +471,11 @@ public partial class MainWindow : Window
         // Meeting Participants - 1/3 width (same as Order Number)
         AddParticipantsFieldWithAutocomplete(orderFormGrid, "Meeting Participants:", participantsPanel, txtParticipantsInput, row, 0, 1);
 
-        // Project Manager - free text, spans remaining 2 columns
-        AddFormField(orderFormGrid, "Project Manager:", txtProjectManager, row++, 1, 2);
+        // Project Manager - free text, spans 1 column
+        AddFormField(orderFormGrid, "Project Manager:", txtProjectManager, row, 1, 1);
+
+        // Territory Manager - free text, spans 1 column (to the right of Project Manager)
+        AddFormField(orderFormGrid, "Territory Manager:", txtTerritoryManager, row++, 2, 1);
 
         // Order Number - spans 1 column (1/3 width)
         AddFormField(orderFormGrid, "Order Number:", txtOrderNumber, row, 0, 1);
@@ -553,6 +564,29 @@ public partial class MainWindow : Window
         AddFormField(orderFormGrid, "Paka Number:", txtPakaNumber, row, 0, 1);
         AddFormField(orderFormGrid, "Delivery Date:", dpDeliveryDate, row, 1, 1);
         AddFormField(orderFormGrid, "Design Due Date:", dpDesignDueDate, row++, 2, 1);
+
+        // When Delivery Date is set, auto-fill Design Due Date to 14 weeks earlier
+        // (unless the user has manually changed it). The user can still override manually.
+        dpDeliveryDate.SelectedDateChanged += (s, e) =>
+        {
+            if (_suppressDesignDueAutoFill) return;
+            if (dpDeliveryDate.SelectedDate.HasValue)
+            {
+                var autoDue = dpDeliveryDate.SelectedDate.Value.AddDays(-14 * 7);
+                if (!_designDueDateManuallySet)
+                {
+                    _suppressDesignDueAutoFill = true;
+                    dpDesignDueDate.SelectedDate = autoDue;
+                    _suppressDesignDueAutoFill = false;
+                }
+            }
+        };
+        dpDesignDueDate.SelectedDateChanged += (s, e) =>
+        {
+            // Mark as manually set only when the change did not originate from auto-fill
+            if (!_suppressDesignDueAutoFill)
+                _designDueDateManuallySet = true;
+        };
 
         // Reference Order - spans full width
         AddFormField(orderFormGrid, "Reference Order:", txtReferenceOrder, row++, 0, 3);
@@ -1425,7 +1459,7 @@ public partial class MainWindow : Window
                 radiationGrid.Children.Add(lbl1);
                 _lblBBType = lbl1;
 
-                _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "SR200N-33");
+                _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "ET", "LT", "WTR", "HE", "HT", "HT-HA", "CH-STD", "CH-ET", "CH-LT", "CH-WTR", "SR200N-33");
                 _bbTypeComboBox.SelectedIndex = -1;
                 var w1 = MakeComboWrapper(_bbTypeComboBox, 138);
                 w1.Margin = new WpfThickness(0, 0, 0, 14);
@@ -1440,7 +1474,7 @@ public partial class MainWindow : Window
                 radiationGrid.Children.Add(lbl2);
                 _lblBBSize = lbl2;
 
-                _bbSizeComboBox = MakeWhiteComboBox(108, "1D", "2D", "4D", "8D", "12D");
+                _bbSizeComboBox = MakeWhiteComboBox(108, "1D", "2D", "4D", "8D", "12D", "14D", "16D", "20D", "35D", "40D");
                 var w2 = MakeComboWrapper(_bbSizeComboBox, 108);
                 w2.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w2, radRowIdx);
@@ -1674,9 +1708,9 @@ public partial class MainWindow : Window
         //         row2: XY Stage(col0), Energy Meter(col1)
         string[] top8      = { "Source Stage", "Device Center", "Manual Choke",
                                 "CTE",          "Power Meter",   "LOS alignment target",
-                                "XY Stage",     "Energy Meter" };
-        int[]    top8Cols  = { 0, 1, 2,  0, 1, 2,  0, 1 };
-        int[]    top8Rows  = { 0, 0, 0,  1, 1, 1,  2, 2 };
+                                "XY Stage",     "Energy Meter",  "Oscilloscope" };
+        int[]    top8Cols  = { 0, 1, 2,  0, 1, 2,  0, 1, 2 };
+        int[]    top8Rows  = { 0, 0, 0,  1, 1, 1,  2, 2, 2 };
 
         // Ensure 3 row definitions for rows 0-2
         componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
@@ -4747,15 +4781,75 @@ public partial class MainWindow : Window
     {
         canvas.Measure(new Size(canvas.Width, canvas.Height));
         canvas.Arrange(new Rect(0, 0, canvas.Width, canvas.Height));
+        canvas.UpdateLayout();
+
         var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(
             (int)canvas.Width, (int)canvas.Height, 96, 96,
             System.Windows.Media.PixelFormats.Pbgra32);
         rtb.Render(canvas);
+
+        // Crop away empty space below/around the actual content so the image
+        // is as tight as possible while still containing every component.
+        var bounds = GetCanvasContentBounds(canvas);
+        System.Windows.Media.Imaging.BitmapSource source = rtb;
+        if (bounds.Width > 0 && bounds.Height > 0)
+        {
+            int x = Math.Max(0, (int)Math.Floor(bounds.X));
+            int y = Math.Max(0, (int)Math.Floor(bounds.Y));
+            int wpx = Math.Min((int)canvas.Width  - x, (int)Math.Ceiling(bounds.Width)  + (int)Math.Ceiling(bounds.X - x));
+            int hpx = Math.Min((int)canvas.Height - y, (int)Math.Ceiling(bounds.Height) + (int)Math.Ceiling(bounds.Y - y));
+            if (wpx > 0 && hpx > 0)
+                source = new System.Windows.Media.Imaging.CroppedBitmap(rtb, new Int32Rect(x, y, wpx, hpx));
+        }
+
         var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
-        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(source));
         using var ms = new System.IO.MemoryStream();
         encoder.Save(ms);
         return ms.ToArray();
+    }
+
+    // Computes the tight bounding box (in canvas pixels) that contains every
+    // child element of the canvas, including a small padding margin.
+    private static Rect GetCanvasContentBounds(System.Windows.Controls.Canvas canvas)
+    {
+        double minX = double.MaxValue, minY = double.MaxValue;
+        double maxX = double.MinValue, maxY = double.MinValue;
+        bool any = false;
+
+        foreach (System.Windows.UIElement child in canvas.Children)
+        {
+            if (child is not System.Windows.FrameworkElement fe) continue;
+
+            double left = System.Windows.Controls.Canvas.GetLeft(fe);
+            double top  = System.Windows.Controls.Canvas.GetTop(fe);
+            if (double.IsNaN(left)) left = 0;
+            if (double.IsNaN(top))  top  = 0;
+
+            fe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double cw = double.IsNaN(fe.Width)  || fe.Width  <= 0 ? fe.DesiredSize.Width  : fe.Width;
+            double ch = double.IsNaN(fe.Height) || fe.Height <= 0 ? fe.DesiredSize.Height : fe.Height;
+
+            // Account for lines/shapes whose bounds are defined by RenderSize.
+            if (cw <= 0) cw = fe.RenderSize.Width;
+            if (ch <= 0) ch = fe.RenderSize.Height;
+
+            minX = Math.Min(minX, left);
+            minY = Math.Min(minY, top);
+            maxX = Math.Max(maxX, left + cw);
+            maxY = Math.Max(maxY, top + ch);
+            any = true;
+        }
+
+        if (!any) return new Rect(0, 0, canvas.Width, canvas.Height);
+
+        const double pad = 8;
+        minX = Math.Max(0, minX - pad);
+        minY = Math.Max(0, minY - pad);
+        maxX = Math.Min(canvas.Width,  maxX + pad);
+        maxY = Math.Min(canvas.Height, maxY + pad);
+
+        return new Rect(minX, minY, maxX - minX, maxY - minY);
     }
 
     private static string FormatTargetName(TargetItem t) => t.Type;
@@ -5002,6 +5096,8 @@ public partial class MainWindow : Window
         ReplacePlaceholder("Penalties",      txtPenalties.Text);
         ReplacePlaceholder("Reference Order", txtReferenceOrder.Text);
         ReplacePlaceholder("Project Manager", txtProjectManager.Text);
+        InjectAfterLabelRun("Territory Manager:", txtTerritoryManager.Text);
+        InjectAfterLabelRun("Contact Person:", txtContactPerson.Text);
         InjectAfterLabelRun("D.O Rated:", chkDORated.IsChecked == true ? "Yes" : "No");
 
         ReplacePlaceholder("Delivery Date",
@@ -5207,7 +5303,7 @@ public partial class MainWindow : Window
                 else if (kv.Key == "XY Stage")
                 {
                     var manual = _xyStageManualCheckBox?.IsChecked ?? _p?.XyStageManual ?? false;
-                    config = manual ? "Manual" : "";
+                    config = manual ? "Manual" : "Motorized";
                 }
                 else if (kv.Key == "NewPort Stage")
                 {
@@ -5426,10 +5522,13 @@ public partial class MainWindow : Window
         if (_blockDiagramCanvas != null)
         {
             // Start with native pixel→EMU dimensions (1 px @ 96 dpi = 9525 EMU).
-            // The isolated scaling try/catch below will shrink them to fit the page;
-            // if scaling throws for any reason the native values are kept as fallback.
-            long imgWidthEmu  = (long)(_blockDiagramCanvas.Width  * 9525);
-            long imgHeightEmu = (long)(_blockDiagramCanvas.Height * 9525);
+            // Use the tight content bounds (not the full canvas) so the exported
+            // image has no empty margins and keeps the correct aspect ratio.
+            var contentBounds = GetCanvasContentBounds(_blockDiagramCanvas);
+            double srcW = contentBounds.Width  > 0 ? contentBounds.Width  : _blockDiagramCanvas.Width;
+            double srcH = contentBounds.Height > 0 ? contentBounds.Height : _blockDiagramCanvas.Height;
+            long imgWidthEmu  = (long)(srcW * 9525);
+            long imgHeightEmu = (long)(srcH * 9525);
             try // scale diagram to fit the first page ─────────────────────────────────
             {
                 long pgW = 11906L, pgH = 16838L; // A4 portrait defaults in twips
@@ -5451,15 +5550,72 @@ public partial class MainWindow : Window
                 }
                 // 1 twip = 635 EMU
                 const long TwipsToEmu = 635L;
-                // Step 1: scale down the native canvas size by 20 % unconditionally.
-                imgWidthEmu  = (long)(imgWidthEmu  * 0.80);
-                imgHeightEmu = (long)(imgHeightEmu * 0.80);
-                // Step 2: further constrain to page body width and 45 % of body height
-                //         so the image never overflows the page in either dimension.
-                long maxWidthEmu  = (pgW - marLeft - marRight) * TwipsToEmu;
-                long maxHeightEmu = (long)((pgH - marTop - marBot) * TwipsToEmu * 0.45);
-                double scaleX   = imgWidthEmu  > maxWidthEmu  ? (double)maxWidthEmu  / imgWidthEmu  : 1.0;
-                double scaleY   = imgHeightEmu > maxHeightEmu ? (double)maxHeightEmu / imgHeightEmu : 1.0;
+
+                // Available body box on page 1.
+                long bodyWidthTwips  = pgW - marLeft - marRight;
+                long bodyHeightTwips = pgH - marTop - marBot;
+
+                // Measure the ACTUAL content that appears above the block-diagram
+                // placeholder rather than guessing individual section heights. The
+                // page-1 layout uses NESTED tables, so we must count EVERY table row
+                // (at any depth) plus every non-table paragraph that occurs before the
+                // sketch placeholder in document order. This automatically accounts for
+                // the Marketing Overview table, the System Configuration table with
+                // however many component rows are currently checked, and any spacing.
+                long usedAboveTwips = 0L;
+                {
+                    // Locate the sketch placeholder paragraph and its top-level ancestor.
+                    var sketchRunForMeasure = body.Descendants(w + "r")
+                        .FirstOrDefault(r => IsRedRun(r) && RunText(r).Contains("APPLY THE SKETCH HERE"));
+                    var sketchPara = sketchRunForMeasure?.Ancestors(w + "p").FirstOrDefault();
+
+                    const long RowTwips       = 360L;  // one table row incl. cell padding (real Word rows ~340-380)
+                    const long ParagraphTwips = 360L;  // one non-table paragraph; titles/banners use larger fonts
+
+                    // Walk the whole body in document order, stopping at the sketch.
+                    foreach (var el in body.Descendants())
+                    {
+                        if (sketchPara != null && el == sketchPara) break;
+
+                        if (el.Name == w + "tr")
+                        {
+                            usedAboveTwips += RowTwips;
+                        }
+                        else if (el.Name == w + "p")
+                        {
+                            // Only count paragraphs that are NOT inside a table cell,
+                            // otherwise they would be double-counted with their row.
+                            bool insideTable = el.Ancestors(w + "tc").Any();
+                            if (!insideTable)
+                                usedAboveTwips += ParagraphTwips;
+                        }
+                    }
+
+                    // Header band (logo + order/customer line) plus the large document
+                    // title area, plus a safety gap so the image never spills onto page 2.
+                    long headerAllowanceTwips = 900L;
+                    long safetyGapTwips       = 700L;
+                    usedAboveTwips += headerAllowanceTwips + safetyGapTwips;
+                }
+
+                long remainingHeightTwips = bodyHeightTwips - usedAboveTwips;
+                // Fill up to ~90% of the gap between the end of the last page-1 table and
+                // the bottom margin. We combine a FIXED absolute safety margin (which
+                // dominates in the tight full-table case and keeps the image on page 1)
+                // with a 90% cap (which lets the image grow to fill most of the gap when
+                // the configuration table is short and the gap is large).
+                const long FixedSafetyTwips = 700L; // ~0.5" absolute reserve
+                remainingHeightTwips = (long)((remainingHeightTwips - FixedSafetyTwips) * 0.90);
+                if (remainingHeightTwips < 1440L) remainingHeightTwips = 1440L; // at least ~1 inch
+
+                long maxWidthEmu  = bodyWidthTwips * TwipsToEmu;
+                long maxHeightEmu = remainingHeightTwips * TwipsToEmu;
+
+                // Scale so the image is the largest that fits BOTH the body width and the
+                // remaining vertical gap (keeping aspect ratio). In practice the height/gap
+                // is the binding constraint, which is what keeps the image on page 1.
+                double scaleX = (double)maxWidthEmu  / imgWidthEmu;
+                double scaleY = (double)maxHeightEmu / imgHeightEmu;
                 double imgScale = Math.Min(scaleX, scaleY);
                 imgWidthEmu  = (long)(imgWidthEmu  * imgScale);
                 imgHeightEmu = (long)(imgHeightEmu * imgScale);
@@ -5549,11 +5705,11 @@ public partial class MainWindow : Window
                                                             new XElement(aNs + "ext",
                                                                 new XAttribute("cx", imgWidthEmu.ToString()),
                                                                 new XAttribute("cy", imgHeightEmu.ToString()))),
-                                                        new XElement(aNs + "prstGeom",
-                                                            new XAttribute("prst", "rect"),
-                                                            new XElement(aNs + "avLst"))))))))));
-                        sketchPara.ReplaceWith(drawingPara);
-                    }
+                                                                                             new XElement(aNs + "prstGeom",
+                                                                                                new XAttribute("prst", "rect"),
+                                                                                                new XElement(aNs + "avLst"))))))))));
+                                                            sketchPara.ReplaceWith(drawingPara);
+                                                        }
                 }
             }
             catch { /* If diagram render fails, skip the image gracefully */ }
@@ -5834,6 +5990,8 @@ public partial class MainWindow : Window
             DeliveryDate       = dpDeliveryDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
             DesignDueDate      = dpDesignDueDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
             ProjectManager     = txtProjectManager.Text,
+            TerritoryManager   = txtTerritoryManager.Text,
+            ContactPerson      = txtContactPerson.Text,
             Participants       = new List<string>(selectedParticipants),
             SellingPrice       = txtSellingPrice.Text,
             MaterialCost       = txtMaterialCost.Text,
@@ -5991,11 +6149,18 @@ public partial class MainWindow : Window
         txtPenalties.Text      = data.Penalties;
         chkDORated.IsChecked   = data.DORated;
         txtProjectManager.Text = data.ProjectManager;
+        txtTerritoryManager.Text = data.TerritoryManager;
+        txtContactPerson.Text  = data.ContactPerson;
 
+        _suppressDesignDueAutoFill = true;
         if (DateTime.TryParse(data.DeliveryDate, out var dd))
             dpDeliveryDate.SelectedDate = dd;
         if (DateTime.TryParse(data.DesignDueDate, out var ddd))
+        {
             dpDesignDueDate.SelectedDate = ddd;
+            _designDueDateManuallySet = true;
+        }
+        _suppressDesignDueAutoFill = false;
 
         selectedParticipants.Clear();
         selectedParticipants.AddRange(data.Participants);
