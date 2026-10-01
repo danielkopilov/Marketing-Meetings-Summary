@@ -140,6 +140,7 @@ public class TemplateData
     public string Vrs3 { get; set; } = "";
     public string Vrs4 { get; set; } = "";
     public bool VrsRackmounted { get; set; }
+    public bool ComputerRackmounted { get; set; }
     public string GimbalSize { get; set; } = "";
     public string GimbalLoadCapacity { get; set; } = "";
     public string GimbalAccuracy { get; set; } = "";
@@ -193,7 +194,8 @@ public partial class MainWindow : Window
         "VRS",
         "Gimbal",
         "Frame Grabbers",
-        "Optical Table"
+        "Optical Table",
+        "Computer"
     };
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
@@ -216,6 +218,7 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _vrsComboBox3;
     private System.Windows.Controls.ComboBox? _vrsComboBox4;
     private WpfCheckBox? _vrsRackmountedCheckBox;
+    private WpfCheckBox? _computerRackmountedCheckBox;
     private System.Windows.Controls.TextBox? _gimbalSizeTextBox;
     private System.Windows.Controls.TextBox? _gimbalLoadCapacityTextBox;
     private WpfCheckBox? _gimbalJoystickCheckBox;
@@ -1385,7 +1388,8 @@ public partial class MainWindow : Window
         var savedVrs2           = _vrsComboBox2?.SelectedItem?.ToString();
         var savedVrs3           = _vrsComboBox3?.SelectedItem?.ToString();
         var savedVrs4           = _vrsComboBox4?.SelectedItem?.ToString();
-        var savedVrsRackmounted = _vrsRackmountedCheckBox?.IsChecked ?? false;
+        var savedVrsRackmounted      = _vrsRackmountedCheckBox?.IsChecked      ?? false;
+        var savedComputerRackmounted = _computerRackmountedCheckBox?.IsChecked ?? false;
         var savedGimbalSize     = _gimbalSizeTextBox?.Text;
         var savedGimbalLC       = _gimbalLoadCapacityTextBox?.Text;
         var savedGimbalAccuracy = _gimbalAccuracyComboBox?.SelectedItem?.ToString();
@@ -2218,10 +2222,48 @@ public partial class MainWindow : Window
             cbOT.Unchecked += (s, e) => { SetInlineEnabled(false, lblOTW, lblOTL, lblOTH); _opticalTableActiveCheckBox.IsEnabled = false; _opticalTableWidthTextBox.IsEnabled  = false; _opticalTableWidthTextBox.Foreground  = _greyBrush; _opticalTableLengthTextBox.IsEnabled = false; _opticalTableLengthTextBox.Foreground = _greyBrush; _opticalTableHeightTextBox.IsEnabled = false; _opticalTableHeightTextBox.Foreground = _greyBrush; };
         }
 
-        // ── Row 9: Rackmount | +Monitor Arm | Height: [__] [U] ───────────────
+        // ── Row 9: Computer | Rackmounted checkbox ───────────────────────────
         {
             componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
             int r = 9;
+
+            var cbComp = _configCheckBoxes["Computer"];
+            DetachCheckBox(cbComp); StyleSysCheckBox(cbComp);
+            cbComp.Margin = new WpfThickness(0, 0, 0, 0);
+            var cbCompWrapper = WrapCheckBoxWithNoteButton(cbComp, "Computer");
+
+            // "Rackmounted" small checkbox — same style as VRS Rackmounted
+            _computerRackmountedCheckBox = new WpfCheckBox
+            {
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = "Rackmounted",
+                    FontSize = 11,
+                    FontWeight = System.Windows.FontWeights.Normal,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    Margin = new WpfThickness(2, 0, 0, 0)
+                },
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(10, 0, 0, 0),
+                Padding = new WpfThickness(0),
+                LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+            };
+
+            var compRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
+            compRow.Children.Add(cbCompWrapper);
+            compRow.Children.Add(_computerRackmountedCheckBox);
+            System.Windows.Controls.Grid.SetRow(compRow, r); System.Windows.Controls.Grid.SetColumn(compRow, 0); System.Windows.Controls.Grid.SetColumnSpan(compRow, 4);
+            componentsGrid.Children.Add(compRow);
+
+            _computerRackmountedCheckBox.IsEnabled = false;
+            cbComp.Checked   += (s, e) => { _computerRackmountedCheckBox.IsEnabled = true; };
+            cbComp.Unchecked += (s, e) => { _computerRackmountedCheckBox.IsEnabled = false; };
+        }
+
+        // ── Row 10: Rackmount | +Monitor Arm | Height: [__] [U] ──────────────
+        {
+            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            int r = 10;
 
             var cbRM = _configCheckBoxes["Rackmount"];
             DetachCheckBox(cbRM); StyleSysCheckBox(cbRM);
@@ -2280,7 +2322,8 @@ public partial class MainWindow : Window
         RestoreComboSelection(_vrsComboBox2, savedVrs2);
         RestoreComboSelection(_vrsComboBox3, savedVrs3);
         RestoreComboSelection(_vrsComboBox4, savedVrs4);
-        if (_vrsRackmountedCheckBox != null) _vrsRackmountedCheckBox.IsChecked = savedVrsRackmounted;
+        if (_vrsRackmountedCheckBox      != null) _vrsRackmountedCheckBox.IsChecked      = savedVrsRackmounted;
+        if (_computerRackmountedCheckBox != null) _computerRackmountedCheckBox.IsChecked = savedComputerRackmounted;
         if (_gimbalSizeTextBox          != null && savedGimbalSize != null)
         if (_gimbalLoadCapacityTextBox  != null && savedGimbalLC   != null) _gimbalLoadCapacityTextBox.Text   = savedGimbalLC;
         RestoreComboSelection(_gimbalAccuracyComboBox, savedGimbalAccuracy);
@@ -2911,7 +2954,10 @@ public partial class MainWindow : Window
         if (_vrsComboBox2 != null) _vrsComboBox2.IsEnabled = vrs;
         if (_vrsComboBox3 != null) _vrsComboBox3.IsEnabled = vrs;
         if (_vrsComboBox4 != null) _vrsComboBox4.IsEnabled = vrs;
-        if (_vrsRackmountedCheckBox != null) _vrsRackmountedCheckBox.IsEnabled = vrs;
+        if (_vrsRackmountedCheckBox      != null) _vrsRackmountedCheckBox.IsEnabled      = vrs;
+
+        bool comp = _configCheckBoxes.TryGetValue("Computer", out var compCb) && compCb.IsChecked == true;
+        if (_computerRackmountedCheckBox != null) _computerRackmountedCheckBox.IsEnabled = comp;
 
         bool gim = _configCheckBoxes.TryGetValue("Gimbal", out var gimCb) && gimCb.IsChecked == true;
         SetInlineEnabled(gim, _lblGimbalSize!, _lblInches!, _lblLoadCapacity!, _lblKGGimbal!, _lblAccuracy!);
@@ -3093,6 +3139,11 @@ public partial class MainWindow : Window
         bool vrsRackmounted  = hasVRS && hasRackmount && _vrsRackmountedCheckBox?.IsChecked == true;
         // VRS is drawn standalone only when it is NOT rackmounted.
         bool hasVRSStandalone = hasVRS && !vrsRackmounted;
+
+        bool hasComputer          = IsChecked("Computer");
+        bool computerRackmounted  = hasComputer && hasRackmount && _computerRackmountedCheckBox?.IsChecked == true;
+        // Computer drawn standalone only when NOT rackmounted.
+        bool hasComputerStandalone = hasComputer && !computerRackmounted;
 
         // System type label
         string sysType = string.Join(" ", new[]
@@ -3320,7 +3371,7 @@ public partial class MainWindow : Window
         if (!hasRackmount && (hasBB || hasIS)) leftExtraW = Math.Max(leftExtraW, 110); // 90px ctrl block + 20px gap
         double diagramW = leftExtraW + srcStageW + narrowW + collBodyW + rightExtraW;
         if (hasRackmount)   diagramW += rackW + rackGap;
-        if (hasPowerMeter || hasEnergyMeter || hasVRSStandalone || hasOscilloscope) diagramW += meterW + meterGap;
+        if (hasPowerMeter || hasEnergyMeter || hasVRSStandalone || hasOscilloscope || hasComputerStandalone) diagramW += meterW + meterGap;
 
         // Grow the canvas so the full diagram (incl. right-side Gimbal/Newport and
         // meter column) is never clipped. Reserve symmetric 10px side margins.
@@ -3393,7 +3444,10 @@ public partial class MainWindow : Window
             if (hasIS)  rackSlots.Add(("SR300N", true));
             if (vrsRackmounted) rackSlots.Add(("VRS", true));
             rackSlots.Add(("Monitor", true));
-            rackSlots.Add(("Computer", true));
+            // Computer goes into the rack only when explicitly rackmounted
+            // (always in the rack when the Computer component is not separately checked,
+            //  but when the user adds a standalone Computer checkbox, it moves accordingly)
+            if (!hasComputer || computerRackmounted) rackSlots.Add(("Computer", true));
 
             // Height logic:
             // - Minimum height is collBodyH (matches collimator height)
@@ -3844,6 +3898,11 @@ public partial class MainWindow : Window
         if (hasOscilloscope)
         {
             MakeBlock("Oscilloscope", meterX, curMeterY, meterW, meterH, fontSize: 9);
+            curMeterY += meterH + 8;
+        }
+        if (hasComputerStandalone)
+        {
+            MakeBlock("Computer", meterX, curMeterY, meterW, meterH, fontSize: 9);
         }
 
         panel.Children.Add(card);
@@ -5380,17 +5439,27 @@ public partial class MainWindow : Window
                 string config;
                 if (kv.Key == "B.B")
                 {
-                    var parts = new List<string>();
                     var bt = _bbTypeComboBox?.SelectedItem?.ToString() ?? _p?.BBType ?? "";
                     var bs = _bbSizeComboBox?.SelectedItem?.ToString() ?? _p?.BBSize ?? "";
-                    if (!string.IsNullOrEmpty(bt)) parts.Add($"Type: {bt}");
-                    if (!string.IsNullOrEmpty(bs)) parts.Add($"Size: {bs}");
-                    config = string.Join(", ", parts);
+                    // Format to match the company database naming convention: SR800N-{Size}-{Type}
+                    // e.g. Type=LT, Size=14D  →  SR800N-14D-LT
+                    if (!string.IsNullOrEmpty(bs) && !string.IsNullOrEmpty(bt))
+                        config = $"SR800N-{bs}-{bt}";
+                    else if (!string.IsNullOrEmpty(bs))
+                        config = $"SR800N-{bs}";
+                    else if (!string.IsNullOrEmpty(bt))
+                        config = $"SR800N-{bt}";
+                    else
+                        config = "";
                 }
                 else if (kv.Key == "I.S")
                 {
                     var ap = _isExitApertureComboBox?.SelectedItem?.ToString() ?? _p?.ISAperture ?? "";
-                    config = !string.IsNullOrEmpty(ap) ? $"Exit Aperture: {ap}" : "";
+                    // Format to match company database naming: SR300N-{size}"-Integrated in Collimator Motorized, Closed Loop
+                    // e.g. Exit Aperture: 4"  →  SR300N-4"-Integrated in Collimator Motorized, Closed Loop
+                    config = !string.IsNullOrEmpty(ap)
+                        ? $"SR300N-{ap}-Integrated in Collimator Motorized, Closed Loop"
+                        : "";
                 }
                 else if (kv.Key == "Backlight")
                 {
@@ -6185,6 +6254,7 @@ public partial class MainWindow : Window
             Vrs3               = _vrsComboBox3?.SelectedItem?.ToString()             ?? p?.Vrs3               ?? "",
             Vrs4               = _vrsComboBox4?.SelectedItem?.ToString()             ?? p?.Vrs4               ?? "",
             VrsRackmounted     = _vrsRackmountedCheckBox?.IsChecked                  ?? p?.VrsRackmounted     ?? false,
+            ComputerRackmounted = _computerRackmountedCheckBox?.IsChecked             ?? p?.ComputerRackmounted ?? false,
             GimbalSize         = _gimbalSizeTextBox?.Text                            ?? p?.GimbalSize         ?? "",
             GimbalLoadCapacity = _gimbalLoadCapacityTextBox?.Text                    ?? p?.GimbalLoadCapacity ?? "",
             GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString()   ?? p?.GimbalAccuracy     ?? "",
@@ -6393,7 +6463,8 @@ public partial class MainWindow : Window
         RestoreComboSelection(_vrsComboBox2, d.Vrs2);
         RestoreComboSelection(_vrsComboBox3, d.Vrs3);
         RestoreComboSelection(_vrsComboBox4, d.Vrs4);
-        if (_vrsRackmountedCheckBox != null) _vrsRackmountedCheckBox.IsChecked = d.VrsRackmounted;
+        if (_vrsRackmountedCheckBox      != null) _vrsRackmountedCheckBox.IsChecked      = d.VrsRackmounted;
+        if (_computerRackmountedCheckBox != null) _computerRackmountedCheckBox.IsChecked = d.ComputerRackmounted;
         if (_gimbalSizeTextBox         != null) _gimbalSizeTextBox.Text         = d.GimbalSize;
         if (_gimbalLoadCapacityTextBox != null) _gimbalLoadCapacityTextBox.Text = d.GimbalLoadCapacity;
         RestoreComboSelection(_gimbalAccuracyComboBox, d.GimbalAccuracy);
