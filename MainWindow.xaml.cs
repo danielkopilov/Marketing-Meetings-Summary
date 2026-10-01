@@ -121,6 +121,7 @@ public class TemplateData
     public string ProjectManager { get; set; } = "";
     public string TerritoryManager { get; set; } = "";
     public string ContactPerson { get; set; } = "";
+    public string Template { get; set; } = "";
     public string SellingPrice { get; set; } = "";
     public string MaterialCost { get; set; } = "";
     public string ProjectHours { get; set; } = "";
@@ -138,6 +139,7 @@ public class TemplateData
     public string Vrs2 { get; set; } = "";
     public string Vrs3 { get; set; } = "";
     public string Vrs4 { get; set; } = "";
+    public bool VrsRackmounted { get; set; }
     public string GimbalSize { get; set; } = "";
     public string GimbalLoadCapacity { get; set; } = "";
     public string GimbalAccuracy { get; set; } = "";
@@ -213,6 +215,7 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _vrsComboBox2;
     private System.Windows.Controls.ComboBox? _vrsComboBox3;
     private System.Windows.Controls.ComboBox? _vrsComboBox4;
+    private WpfCheckBox? _vrsRackmountedCheckBox;
     private System.Windows.Controls.TextBox? _gimbalSizeTextBox;
     private System.Windows.Controls.TextBox? _gimbalLoadCapacityTextBox;
     private WpfCheckBox? _gimbalJoystickCheckBox;
@@ -256,12 +259,14 @@ public partial class MainWindow : Window
     private System.Windows.Controls.TextBox txtPakaNumber = new();
     private System.Windows.Controls.DatePicker dpDeliveryDate = new();
     private System.Windows.Controls.DatePicker dpDesignDueDate = new();
+    private System.Windows.Controls.TextBlock? _designDueHintLabel;
     private bool _designDueDateManuallySet = false;
     private bool _suppressDesignDueAutoFill = false;
     private System.Windows.Controls.WrapPanel? participantsPanel;
     private System.Windows.Controls.TextBox? txtParticipantsInput;
-    private System.Windows.Controls.TextBox txtProjectManager = new();
-    private System.Windows.Controls.TextBox txtTerritoryManager = new();
+    private System.Windows.Controls.ComboBox cmbProjectManager = new();
+    private System.Windows.Controls.ComboBox cmbTerritoryManager = new();
+    private System.Windows.Controls.ComboBox cmbTemplate = new();
     private System.Windows.Controls.TextBox txtReferenceOrder = new();
     private List<string> selectedParticipants = new();
 
@@ -292,7 +297,7 @@ public partial class MainWindow : Window
         try
         {
             InitializeComponent();
-            MinWidth = 1100;
+            MinWidth = 1180;
             MinHeight = 720;
             SetResponsiveWindowSize();
             InitializeConfigItems();
@@ -318,7 +323,9 @@ public partial class MainWindow : Window
         // fits any monitor and keeps the title bar/controls visible.
         var workArea = System.Windows.SystemParameters.WorkArea;
 
-        double width = workArea.Width * 0.8;
+        // Open at the minimum usable width (the active content area) so there is no
+        // large empty space on the right when the app first launches.
+        double width = MinWidth;
         double height = workArea.Height * 0.8;
 
         // Respect minimum sizes so the UI stays usable on very small screens.
@@ -459,11 +466,16 @@ public partial class MainWindow : Window
         };
         orderStackPanel.Children.Add(orderTitle);
 
-        // Create form grid with 3 columns
-        var orderFormGrid = new System.Windows.Controls.Grid();
-        orderFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        orderFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        orderFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        // Create form grid with 3 fixed-width columns so the internal layout never
+        // stretches or spreads when the window is resized. Left-aligned so extra
+        // window width becomes empty space on the right instead of moving the fields.
+        var orderFormGrid = new System.Windows.Controls.Grid
+        {
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+        };
+        orderFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(232) });
+        orderFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(232) });
+        orderFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(232) });
         orderStackPanel.Children.Add(orderFormGrid);
 
         int row = 0;
@@ -472,10 +484,26 @@ public partial class MainWindow : Window
         AddParticipantsFieldWithAutocomplete(orderFormGrid, "Meeting Participants:", participantsPanel, txtParticipantsInput, row, 0, 1);
 
         // Project Manager - free text, spans 1 column
-        AddFormField(orderFormGrid, "Project Manager:", txtProjectManager, row, 1, 1);
+        // Project Manager - drop-down, same style as Template
+        if (cmbProjectManager.Items.Count == 0)
+        {
+            cmbProjectManager = MakeCompactComboBox(220,
+                "Daniel Kopilov", "Irit Tsin", "Uri Issman", "Haim Limor",
+                "Tamir Glazer", "Elad Azoulay", "Yuval Penias", "Stas Krasik");
+            cmbProjectManager.Height = 32;
+        }
+        AddFormField(orderFormGrid, "Project Manager:", cmbProjectManager, row, 1, 1);
 
         // Territory Manager - free text, spans 1 column (to the right of Project Manager)
-        AddFormField(orderFormGrid, "Territory Manager:", txtTerritoryManager, row++, 2, 1);
+        // Territory Manager - drop-down, same style as Template
+        if (cmbTerritoryManager.Items.Count == 0)
+        {
+            cmbTerritoryManager = MakeCompactComboBox(220,
+                "Amir Barak", "Eran Adler", "Nir GurArye",
+                "Amnon Yardenay", "Raphy Adout", "Efraim Tzafrir", "Eytan Eschinasi");
+            cmbTerritoryManager.Height = 32;
+        }
+        AddFormField(orderFormGrid, "Territory Manager:", cmbTerritoryManager, row++, 2, 1);
 
         // Order Number - spans 1 column (1/3 width)
         AddFormField(orderFormGrid, "Order Number:", txtOrderNumber, row, 0, 1);
@@ -563,7 +591,46 @@ public partial class MainWindow : Window
         // Paka Number, Delivery Date, Design Due Date (all side by side)
         AddFormField(orderFormGrid, "Paka Number:", txtPakaNumber, row, 0, 1);
         AddFormField(orderFormGrid, "Delivery Date:", dpDeliveryDate, row, 1, 1);
-        AddFormField(orderFormGrid, "Design Due Date:", dpDesignDueDate, row++, 2, 1);
+
+        // Design Due Date — built inline so a small hint label can sit beneath it.
+        {
+            orderFormGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+            var ddStack = new System.Windows.Controls.StackPanel
+            {
+                Margin = new WpfThickness(0, 0, 0, 8)
+            };
+            ddStack.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = "Design Due Date:",
+                FontSize = 12,
+                FontWeight = System.Windows.FontWeights.Medium,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)),
+                Margin = new WpfThickness(0, 0, 0, 4)
+            });
+
+            ApplyModernControlStyle(dpDesignDueDate);
+            dpDesignDueDate.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+            dpDesignDueDate.Width = 220;
+            SafeAddChild(ddStack, dpDesignDueDate);
+
+            _designDueHintLabel = new System.Windows.Controls.TextBlock
+            {
+                Text = "14 weeks prior the delivery date!",
+                FontSize = 10,
+                FontStyle = System.Windows.FontStyles.Italic,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(107, 114, 128)),
+                Margin = new WpfThickness(2, 2, 0, 0),
+                // Only shown once the date is auto-filled (and not manually overridden).
+                Visibility = (!_designDueDateManuallySet && dpDesignDueDate.SelectedDate.HasValue)
+                    ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed
+            };
+            ddStack.Children.Add(_designDueHintLabel);
+
+            System.Windows.Controls.Grid.SetRow(ddStack, row);
+            System.Windows.Controls.Grid.SetColumn(ddStack, 2);
+            orderFormGrid.Children.Add(ddStack);
+            row++;
+        }
 
         // When Delivery Date is set, auto-fill Design Due Date to 14 weeks earlier
         // (unless the user has manually changed it). The user can still override manually.
@@ -578,6 +645,8 @@ public partial class MainWindow : Window
                     _suppressDesignDueAutoFill = true;
                     dpDesignDueDate.SelectedDate = autoDue;
                     _suppressDesignDueAutoFill = false;
+                    if (_designDueHintLabel != null)
+                        _designDueHintLabel.Visibility = System.Windows.Visibility.Visible;
                 }
             }
         };
@@ -585,11 +654,25 @@ public partial class MainWindow : Window
         {
             // Mark as manually set only when the change did not originate from auto-fill
             if (!_suppressDesignDueAutoFill)
+            {
                 _designDueDateManuallySet = true;
+                if (_designDueHintLabel != null)
+                    _designDueHintLabel.Visibility = System.Windows.Visibility.Collapsed;
+            }
         };
 
+        // Template drop-down - sits under Delivery Date (column 1)
+        if (cmbTemplate.Items.Count == 0)
+        {
+            cmbTemplate = MakeCompactComboBox(220,
+                "Complicated", "CTE Application", "Simple Project",
+                "Very simple project template", "AWBS", "Targets", "Duplicate");
+            cmbTemplate.Height = 32; // match the height of the free-text boxes
+        }
+        AddFormField(orderFormGrid, "Template:", cmbTemplate, row, 1, 1);
+
         // Reference Order - spans full width
-        AddFormField(orderFormGrid, "Reference Order:", txtReferenceOrder, row++, 0, 3);
+        AddFormField(orderFormGrid, "Reference Order:", txtReferenceOrder, row++, 0, 1);
 
         panel.Children.Add(orderCard);
 
@@ -620,11 +703,16 @@ public partial class MainWindow : Window
         };
         marketingStackPanel.Children.Add(marketingTitle);
 
-        // Create form grid with 3 columns
-        var marketingFormGrid = new System.Windows.Controls.Grid();
-        marketingFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        marketingFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        marketingFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        // Create form grid with 3 fixed-width columns so the internal layout never
+        // stretches or spreads when the window is resized. Left-aligned so extra
+        // window width becomes empty space on the right instead of moving the fields.
+        var marketingFormGrid = new System.Windows.Controls.Grid
+        {
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+        };
+        marketingFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(232) });
+        marketingFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(232) });
+        marketingFormGrid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(232) });
         marketingStackPanel.Children.Add(marketingFormGrid);
 
         int marketingRow = 0;
@@ -703,6 +791,17 @@ public partial class MainWindow : Window
 
         // Apply modern style to control
         ApplyModernControlStyle(control);
+
+        // Give text boxes / combo boxes a fixed, consistent width so the form looks
+        // clean and professional and does not stretch with the window. The whole GUI
+        // is scaled proportionally elsewhere, so a fixed internal width keeps every
+        // field visually identical regardless of column span. Date pickers keep their
+        // wider fixed width so the "Select a date" text and calendar icon fit.
+        control.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+        if (control is System.Windows.Controls.DatePicker)
+            control.Width = 220;
+        else
+            control.Width = 220;
 
         SafeAddChild(fieldStack, control);
 
@@ -864,7 +963,9 @@ public partial class MainWindow : Window
             Background = System.Windows.Media.Brushes.White,
             Padding = new WpfThickness(4, 0, 4, 0),
             Height = 32,
-            MaxHeight = 32
+            MaxHeight = 32,
+            Width = 220,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left
         };
 
         // Create new WrapPanel each time
@@ -1284,6 +1385,7 @@ public partial class MainWindow : Window
         var savedVrs2           = _vrsComboBox2?.SelectedItem?.ToString();
         var savedVrs3           = _vrsComboBox3?.SelectedItem?.ToString();
         var savedVrs4           = _vrsComboBox4?.SelectedItem?.ToString();
+        var savedVrsRackmounted = _vrsRackmountedCheckBox?.IsChecked ?? false;
         var savedGimbalSize     = _gimbalSizeTextBox?.Text;
         var savedGimbalLC       = _gimbalLoadCapacityTextBox?.Text;
         var savedGimbalAccuracy = _gimbalAccuracyComboBox?.SelectedItem?.ToString();
@@ -1924,7 +2026,7 @@ public partial class MainWindow : Window
             cbVRS.Margin = new WpfThickness(0, 0, 0, 0);
             var cbVRSWrapper = WrapCheckBoxWithNoteButton(cbVRS, "VRS");
 
-            string[] vrsOptions = { "NA", "1550 [nm]", "1570 [nm]", "1064 [nm]", "1540 [nm]" };
+            string[] vrsOptions = { "NA", "1550 [nm]", "1570 [nm]", "1064 [nm]", "1540 [nm]", "905 [nm]" };
             _vrsComboBox1 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox1.SelectedIndex = 0;
             _vrsComboBox2 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox2.SelectedIndex = 0;
             _vrsComboBox3 = MakeWhiteComboBox(110, vrsOptions); _vrsComboBox3.SelectedIndex = 0;
@@ -1933,19 +2035,39 @@ public partial class MainWindow : Window
             _vrsComboBox3.Margin = new WpfThickness(6, 0, 0, 0);
             _vrsComboBox4.Margin = new WpfThickness(6, 0, 0, 0);
 
+            // "Rackmounted" small checkbox — when checked the VRS block is drawn
+            // inside the rackmount stack instead of as a standalone unit.
+            _vrsRackmountedCheckBox = new WpfCheckBox
+            {
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = "Rackmounted",
+                    FontSize = 11,
+                    FontWeight = System.Windows.FontWeights.Normal,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    Margin = new WpfThickness(2, 0, 0, 0)
+                },
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(10, 0, 0, 0),
+                Padding = new WpfThickness(0),
+                LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
+            };
+
             var vrsRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
             vrsRow.Children.Add(cbVRSWrapper);
             vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox1, 110));
             vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox2, 110));
             vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox3, 110));
             vrsRow.Children.Add(MakeComboWrapper(_vrsComboBox4, 110));
+            vrsRow.Children.Add(_vrsRackmountedCheckBox);
             System.Windows.Controls.Grid.SetRow(vrsRow, r); System.Windows.Controls.Grid.SetColumn(vrsRow, 0); System.Windows.Controls.Grid.SetColumnSpan(vrsRow, 4);
             componentsGrid.Children.Add(vrsRow);
 
+            _vrsRackmountedCheckBox.IsEnabled = false;
             _vrsComboBox1.IsEnabled = false; _vrsComboBox2.IsEnabled = false;
             _vrsComboBox3.IsEnabled = false; _vrsComboBox4.IsEnabled = false;
-            cbVRS.Checked   += (s, e) => { _vrsComboBox1.IsEnabled = true;  _vrsComboBox2.IsEnabled = true;  _vrsComboBox3.IsEnabled = true;  _vrsComboBox4.IsEnabled = true; };
-            cbVRS.Unchecked += (s, e) => { _vrsComboBox1.IsEnabled = false; _vrsComboBox2.IsEnabled = false; _vrsComboBox3.IsEnabled = false; _vrsComboBox4.IsEnabled = false; };
+            cbVRS.Checked   += (s, e) => { _vrsComboBox1.IsEnabled = true;  _vrsComboBox2.IsEnabled = true;  _vrsComboBox3.IsEnabled = true;  _vrsComboBox4.IsEnabled = true;  _vrsRackmountedCheckBox.IsEnabled = true; };
+            cbVRS.Unchecked += (s, e) => { _vrsComboBox1.IsEnabled = false; _vrsComboBox2.IsEnabled = false; _vrsComboBox3.IsEnabled = false; _vrsComboBox4.IsEnabled = false; _vrsRackmountedCheckBox.IsEnabled = false; };
         }
 
         // ── Row 6: Gimbal | +Joystick | Size:[__][Inches] | Load Capacity:[__][KG] | Accuracy:[v] ──
@@ -2158,7 +2280,8 @@ public partial class MainWindow : Window
         RestoreComboSelection(_vrsComboBox2, savedVrs2);
         RestoreComboSelection(_vrsComboBox3, savedVrs3);
         RestoreComboSelection(_vrsComboBox4, savedVrs4);
-        if (_gimbalSizeTextBox          != null && savedGimbalSize != null) _gimbalSizeTextBox.Text           = savedGimbalSize;
+        if (_vrsRackmountedCheckBox != null) _vrsRackmountedCheckBox.IsChecked = savedVrsRackmounted;
+        if (_gimbalSizeTextBox          != null && savedGimbalSize != null)
         if (_gimbalLoadCapacityTextBox  != null && savedGimbalLC   != null) _gimbalLoadCapacityTextBox.Text   = savedGimbalLC;
         RestoreComboSelection(_gimbalAccuracyComboBox, savedGimbalAccuracy);
         if (_gimbalJoystickCheckBox != null) _gimbalJoystickCheckBox.IsChecked = savedGimbalJoystick;
@@ -2788,6 +2911,7 @@ public partial class MainWindow : Window
         if (_vrsComboBox2 != null) _vrsComboBox2.IsEnabled = vrs;
         if (_vrsComboBox3 != null) _vrsComboBox3.IsEnabled = vrs;
         if (_vrsComboBox4 != null) _vrsComboBox4.IsEnabled = vrs;
+        if (_vrsRackmountedCheckBox != null) _vrsRackmountedCheckBox.IsEnabled = vrs;
 
         bool gim = _configCheckBoxes.TryGetValue("Gimbal", out var gimCb) && gimCb.IsChecked == true;
         SetInlineEnabled(gim, _lblGimbalSize!, _lblInches!, _lblLoadCapacity!, _lblKGGimbal!, _lblAccuracy!);
@@ -2964,6 +3088,11 @@ public partial class MainWindow : Window
         bool hasLOSTarget    = IsChecked("LOS alignment target");
         bool hasFocus        = IsChecked("Focus Stage");
         bool hasGimbal       = IsChecked("Gimbal");
+        bool hasVRS          = IsChecked("VRS");
+        bool hasOscilloscope = IsChecked("Oscilloscope");
+        bool vrsRackmounted  = hasVRS && hasRackmount && _vrsRackmountedCheckBox?.IsChecked == true;
+        // VRS is drawn standalone only when it is NOT rackmounted.
+        bool hasVRSStandalone = hasVRS && !vrsRackmounted;
 
         // System type label
         string sysType = string.Join(" ", new[]
@@ -3149,7 +3278,7 @@ public partial class MainWindow : Window
         }
 
         // ── LAYOUT CONSTANTS ───────────────────────────────────────────────
-        const double canvasW = 750;
+        double canvasW = 750;   // baseline width; grows below if the diagram is wider
         double topPad = 60;   // vertical padding from top
 
         // Fixed sizes
@@ -3184,12 +3313,20 @@ public partial class MainWindow : Window
         // ── Compute total diagram width to centre it ─────────────────────
         double rightExtraW = 0;
         if (hasNewport || hasGimbal) rightExtraW = 106; // 90px block + 16px gap
+        // Monitor Arm sits to the LEFT of the rackmount; reserve its width so it is never clipped.
+        double monitorArmExtraW = (hasMonitorArm && hasRackmount) ? 70 : 0; // 58px block + 12px gap
         // When no rackmount, standalone controller blocks sit to the left of the source stage
-        double leftExtraW = 0;
-        if (!hasRackmount && (hasBB || hasIS)) leftExtraW = 110; // 90px ctrl block + 20px gap
+        double leftExtraW = monitorArmExtraW;
+        if (!hasRackmount && (hasBB || hasIS)) leftExtraW = Math.Max(leftExtraW, 110); // 90px ctrl block + 20px gap
         double diagramW = leftExtraW + srcStageW + narrowW + collBodyW + rightExtraW;
         if (hasRackmount)   diagramW += rackW + rackGap;
-        if (hasPowerMeter || hasEnergyMeter) diagramW += meterW + meterGap;
+        if (hasPowerMeter || hasEnergyMeter || hasVRSStandalone || hasOscilloscope) diagramW += meterW + meterGap;
+
+        // Grow the canvas so the full diagram (incl. right-side Gimbal/Newport and
+        // meter column) is never clipped. Reserve symmetric 10px side margins.
+        double requiredW = diagramW + 20;
+        if (requiredW > canvasW) canvasW = requiredW;
+        canvas.Width = canvasW;
 
         double offsetX = Math.Max(10, (canvasW - diagramW) / 2.0);
 
@@ -3197,7 +3334,7 @@ public partial class MainWindow : Window
         double rackX, srcStageX, narrowX, collBodyX, meterX;
         if (hasRackmount)
         {
-            rackX      = offsetX;
+            rackX      = offsetX + monitorArmExtraW;   // leave room on the left for the Monitor Arm box
             srcStageX  = rackX + rackW + rackGap;
         }
         else
@@ -3224,9 +3361,11 @@ public partial class MainWindow : Window
         // ── Monitor on Arm (far left of rack) ──────────────────────────────
         if (hasMonitorArm)
         {
-            MakeBlock("Monitor\non Arm", rackX - 65, rackY + 45, 58, 42, fontSize: 9);
+            double armW = 58, armH = 42;
+            double armX = rackX - armW - 7;  // just left of the rack, always within canvas since offsetX includes monitorArmExtraW
+            MakeBlock("Monitor\non Arm", armX, rackY + 45, armW, armH, fontSize: 9);
             var ln = new System.Windows.Shapes.Line
-            { X1 = rackX - 7, Y1 = rackY + 66, X2 = rackX, Y2 = rackY + 66,
+            { X1 = armX + armW, Y1 = rackY + 66, X2 = rackX, Y2 = rackY + 66,
               Stroke = System.Windows.Media.Brushes.Black, StrokeThickness = 1.5 };
             canvas.Children.Add(ln);
         }
@@ -3252,6 +3391,7 @@ public partial class MainWindow : Window
             rackSlots.Add(("PDU", true));
             if (hasBB)  rackSlots.Add(("SR800N", true));
             if (hasIS)  rackSlots.Add(("SR300N", true));
+            if (vrsRackmounted) rackSlots.Add(("VRS", true));
             rackSlots.Add(("Monitor", true));
             rackSlots.Add(("Computer", true));
 
@@ -3694,6 +3834,16 @@ public partial class MainWindow : Window
         if (hasEnergyMeter)
         {
             MakeBlock("Energy\nMeter", meterX, curMeterY, meterW, meterH, fontSize: 9);
+            curMeterY += meterH + 8;
+        }
+        if (hasVRSStandalone)
+        {
+            MakeBlock("VRS", meterX, curMeterY, meterW, meterH, fontSize: 9);
+            curMeterY += meterH + 8;
+        }
+        if (hasOscilloscope)
+        {
+            MakeBlock("Oscilloscope", meterX, curMeterY, meterW, meterH, fontSize: 9);
         }
 
         panel.Children.Add(card);
@@ -4189,22 +4339,41 @@ public partial class MainWindow : Window
         { _pmNotes.Remove(item); RenumberCollection(_pmNotes); }
     }
 
+    // Maps internal config keys to their user-facing display names. The dictionary
+    // keys ("B.B", "I.S", ...) remain unchanged so all existing logic keeps working.
+    private static string ConfigDisplayName(string key) => key switch
+    {
+        "B.B" => "Blackbody",
+        "I.S" => "Integrating Sphere",
+        _      => key
+    };
+
     private void InitializeConfigItems()
     {
         // Initialize Radiation Source items
         foreach (var item in _radiationSourceItems)
         {
+            var labelBlock = new System.Windows.Controls.TextBlock
+            {
+                Text = ConfigDisplayName(item),
+                FontSize = 14,
+                FontWeight = System.Windows.FontWeights.Normal,
+                Margin = new WpfThickness(0),
+                // Allow long labels (e.g. "Integrating Sphere") to wrap onto a
+                // second line instead of being clipped by the fixed column width.
+                TextWrapping = System.Windows.TextWrapping.Wrap
+            };
+            // Constrain only the long label so "Sphere" drops under "Integrating";
+            // other labels keep their natural single-line width.
+            if (item == "I.S")
+                labelBlock.MaxWidth = 78;
+
             var checkBox = new WpfCheckBox
             {
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = item,
-                    FontSize = 14,
-                    FontWeight = System.Windows.FontWeights.Normal,
-                    Margin = new WpfThickness(0)
-                },
+                Content = labelBlock,
                 FontSize = 14,
-                FontWeight = System.Windows.FontWeights.Normal
+                FontWeight = System.Windows.FontWeights.Normal,
+                VerticalContentAlignment = System.Windows.VerticalAlignment.Center
             };
             _configCheckBoxes[item] = checkBox;
         }
@@ -4216,7 +4385,7 @@ public partial class MainWindow : Window
             {
                 Content = new System.Windows.Controls.TextBlock
                 {
-                    Text = item,
+                    Text = ConfigDisplayName(item),
                     FontSize = 14,
                     FontWeight = System.Windows.FontWeights.Normal,
                     Margin = new WpfThickness(0)
@@ -5095,9 +5264,10 @@ public partial class MainWindow : Window
         }
         ReplacePlaceholder("Penalties",      txtPenalties.Text);
         ReplacePlaceholder("Reference Order", txtReferenceOrder.Text);
-        ReplacePlaceholder("Project Manager", txtProjectManager.Text);
-        InjectAfterLabelRun("Territory Manager:", txtTerritoryManager.Text);
+        ReplacePlaceholder("Project Manager", cmbProjectManager.SelectedItem?.ToString() ?? "");
+        InjectAfterLabelRun("Territory Manager:", cmbTerritoryManager.SelectedItem?.ToString() ?? "");
         InjectAfterLabelRun("Contact Person:", txtContactPerson.Text);
+        InjectAfterLabelRun("Template:", cmbTemplate.SelectedItem?.ToString() ?? "");
         InjectAfterLabelRun("D.O Rated:", chkDORated.IsChecked == true ? "Yes" : "No");
 
         ReplacePlaceholder("Delivery Date",
@@ -5320,7 +5490,7 @@ public partial class MainWindow : Window
                     config = "";
                 }
                 _componentNotes.TryGetValue(kv.Key, out var note);
-                return (name: kv.Key, config, note: note ?? "");
+                return (name: ConfigDisplayName(kv.Key), config, note: note ?? "");
             }).ToList();
 
         // Add any custom config lines (no note)
@@ -5617,6 +5787,8 @@ public partial class MainWindow : Window
                 double scaleX = (double)maxWidthEmu  / imgWidthEmu;
                 double scaleY = (double)maxHeightEmu / imgHeightEmu;
                 double imgScale = Math.Min(scaleX, scaleY);
+                // Reduce the final image by an extra 10% so it reliably stays on page 1.
+                imgScale *= 0.90;
                 imgWidthEmu  = (long)(imgWidthEmu  * imgScale);
                 imgHeightEmu = (long)(imgHeightEmu * imgScale);
             }
@@ -5989,9 +6161,10 @@ public partial class MainWindow : Window
             ReferenceOrder     = txtReferenceOrder.Text,
             DeliveryDate       = dpDeliveryDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
             DesignDueDate      = dpDesignDueDate.SelectedDate?.ToString("yyyy-MM-dd") ?? "",
-            ProjectManager     = txtProjectManager.Text,
-            TerritoryManager   = txtTerritoryManager.Text,
+            ProjectManager     = cmbProjectManager.SelectedItem?.ToString() ?? "",
+            TerritoryManager   = cmbTerritoryManager.SelectedItem?.ToString() ?? "",
             ContactPerson      = txtContactPerson.Text,
+            Template           = cmbTemplate.SelectedItem?.ToString() ?? "",
             Participants       = new List<string>(selectedParticipants),
             SellingPrice       = txtSellingPrice.Text,
             MaterialCost       = txtMaterialCost.Text,
@@ -6011,6 +6184,7 @@ public partial class MainWindow : Window
             Vrs2               = _vrsComboBox2?.SelectedItem?.ToString()             ?? p?.Vrs2               ?? "",
             Vrs3               = _vrsComboBox3?.SelectedItem?.ToString()             ?? p?.Vrs3               ?? "",
             Vrs4               = _vrsComboBox4?.SelectedItem?.ToString()             ?? p?.Vrs4               ?? "",
+            VrsRackmounted     = _vrsRackmountedCheckBox?.IsChecked                  ?? p?.VrsRackmounted     ?? false,
             GimbalSize         = _gimbalSizeTextBox?.Text                            ?? p?.GimbalSize         ?? "",
             GimbalLoadCapacity = _gimbalLoadCapacityTextBox?.Text                    ?? p?.GimbalLoadCapacity ?? "",
             GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString()   ?? p?.GimbalAccuracy     ?? "",
@@ -6148,9 +6322,13 @@ public partial class MainWindow : Window
         txtProjectHours.Text   = data.ProjectHours;
         txtPenalties.Text      = data.Penalties;
         chkDORated.IsChecked   = data.DORated;
-        txtProjectManager.Text = data.ProjectManager;
-        txtTerritoryManager.Text = data.TerritoryManager;
+        if (!string.IsNullOrEmpty(data.ProjectManager))
+            cmbProjectManager.SelectedItem = data.ProjectManager;
+        if (!string.IsNullOrEmpty(data.TerritoryManager))
+            cmbTerritoryManager.SelectedItem = data.TerritoryManager;
         txtContactPerson.Text  = data.ContactPerson;
+        if (!string.IsNullOrEmpty(data.Template))
+            cmbTemplate.SelectedItem = data.Template;
 
         _suppressDesignDueAutoFill = true;
         if (DateTime.TryParse(data.DeliveryDate, out var dd))
@@ -6215,6 +6393,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_vrsComboBox2, d.Vrs2);
         RestoreComboSelection(_vrsComboBox3, d.Vrs3);
         RestoreComboSelection(_vrsComboBox4, d.Vrs4);
+        if (_vrsRackmountedCheckBox != null) _vrsRackmountedCheckBox.IsChecked = d.VrsRackmounted;
         if (_gimbalSizeTextBox         != null) _gimbalSizeTextBox.Text         = d.GimbalSize;
         if (_gimbalLoadCapacityTextBox != null) _gimbalLoadCapacityTextBox.Text = d.GimbalLoadCapacity;
         RestoreComboSelection(_gimbalAccuracyComboBox, d.GimbalAccuracy);
