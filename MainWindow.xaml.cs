@@ -1814,11 +1814,13 @@ public partial class MainWindow : Window
         //         row2: XY Stage(col0), Energy Meter(col1)
         string[] top8      = { "Source Stage", "Device Center", "Manual Choke",
                                 "CTE",          "Power Meter",   "LOS alignment target",
-                                "XY Stage",     "Energy Meter",  "Oscilloscope" };
-        int[]    top8Cols  = { 0, 1, 2,  0, 1, 2,  0, 1, 2 };
-        int[]    top8Rows  = { 0, 0, 0,  1, 1, 1,  2, 2, 2 };
+                                "XY Stage",     "Energy Meter",  "Oscilloscope",
+                                                                 "Computer" };
+        int[]    top8Cols  = { 0, 1, 2,  0, 1, 2,  0, 1, 2,  2 };
+        int[]    top8Rows  = { 0, 0, 0,  1, 1, 1,  2, 2, 2,  3 };
 
-        // Ensure 3 row definitions for rows 0-2
+        // Ensure 4 row definitions for rows 0-3
+        componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
         componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
         componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
         componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
@@ -1928,6 +1930,40 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetColumn(losRow, top8Cols[i]);
                 System.Windows.Controls.Grid.SetColumnSpan(losRow, 2);
                 componentsGrid.Children.Add(losRow);
+            }
+            else if (top8[i] == "Computer")
+            {
+                // "Rackmounted" small checkbox — same style as VRS Rackmounted
+                _computerRackmountedCheckBox = new WpfCheckBox
+                {
+                    Content = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "Rackmounted",
+                        FontSize = 11,
+                        FontWeight = System.Windows.FontWeights.Normal,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        Margin = new WpfThickness(2, 0, 0, 0)
+                    },
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(6, 0, 0, 0),
+                    Padding = new WpfThickness(0),
+                    LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8),
+                    IsEnabled = false
+                };
+                var compRow = new System.Windows.Controls.StackPanel
+                {
+                    Orientation = System.Windows.Controls.Orientation.Horizontal,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(0, 0, 0, 14)
+                };
+                compRow.Children.Add(cbw);
+                compRow.Children.Add(_computerRackmountedCheckBox);
+                System.Windows.Controls.Grid.SetRow(compRow, top8Rows[i]);
+                System.Windows.Controls.Grid.SetColumn(compRow, top8Cols[i]);
+                componentsGrid.Children.Add(compRow);
+                var compCb = _configCheckBoxes["Computer"];
+                compCb.Checked   += (s, e) => { _computerRackmountedCheckBox.IsEnabled = true; };
+                compCb.Unchecked += (s, e) => { _computerRackmountedCheckBox.IsEnabled = false; };
             }
             else
             {
@@ -2222,48 +2258,10 @@ public partial class MainWindow : Window
             cbOT.Unchecked += (s, e) => { SetInlineEnabled(false, lblOTW, lblOTL, lblOTH); _opticalTableActiveCheckBox.IsEnabled = false; _opticalTableWidthTextBox.IsEnabled  = false; _opticalTableWidthTextBox.Foreground  = _greyBrush; _opticalTableLengthTextBox.IsEnabled = false; _opticalTableLengthTextBox.Foreground = _greyBrush; _opticalTableHeightTextBox.IsEnabled = false; _opticalTableHeightTextBox.Foreground = _greyBrush; };
         }
 
-        // ── Row 9: Computer | Rackmounted checkbox ───────────────────────────
+        // ── Row 9: Rackmount | +Monitor Arm | Height: [__] [U] ──────────────
         {
             componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
             int r = 9;
-
-            var cbComp = _configCheckBoxes["Computer"];
-            DetachCheckBox(cbComp); StyleSysCheckBox(cbComp);
-            cbComp.Margin = new WpfThickness(0, 0, 0, 0);
-            var cbCompWrapper = WrapCheckBoxWithNoteButton(cbComp, "Computer");
-
-            // "Rackmounted" small checkbox — same style as VRS Rackmounted
-            _computerRackmountedCheckBox = new WpfCheckBox
-            {
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = "Rackmounted",
-                    FontSize = 11,
-                    FontWeight = System.Windows.FontWeights.Normal,
-                    Foreground = System.Windows.Media.Brushes.Black,
-                    Margin = new WpfThickness(2, 0, 0, 0)
-                },
-                VerticalAlignment = System.Windows.VerticalAlignment.Center,
-                Margin = new WpfThickness(10, 0, 0, 0),
-                Padding = new WpfThickness(0),
-                LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8)
-            };
-
-            var compRow = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = System.Windows.VerticalAlignment.Center, Margin = new WpfThickness(0, 0, 0, 14) };
-            compRow.Children.Add(cbCompWrapper);
-            compRow.Children.Add(_computerRackmountedCheckBox);
-            System.Windows.Controls.Grid.SetRow(compRow, r); System.Windows.Controls.Grid.SetColumn(compRow, 0); System.Windows.Controls.Grid.SetColumnSpan(compRow, 4);
-            componentsGrid.Children.Add(compRow);
-
-            _computerRackmountedCheckBox.IsEnabled = false;
-            cbComp.Checked   += (s, e) => { _computerRackmountedCheckBox.IsEnabled = true; };
-            cbComp.Unchecked += (s, e) => { _computerRackmountedCheckBox.IsEnabled = false; };
-        }
-
-        // ── Row 10: Rackmount | +Monitor Arm | Height: [__] [U] ──────────────
-        {
-            componentsGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
-            int r = 10;
 
             var cbRM = _configCheckBoxes["Rackmount"];
             DetachCheckBox(cbRM); StyleSysCheckBox(cbRM);
@@ -3142,8 +3140,9 @@ public partial class MainWindow : Window
 
         bool hasComputer          = IsChecked("Computer");
         bool computerRackmounted  = hasComputer && hasRackmount && _computerRackmountedCheckBox?.IsChecked == true;
-        // Computer drawn standalone only when NOT rackmounted.
-        bool hasComputerStandalone = hasComputer && !computerRackmounted;
+        // Standalone only when Computer is checked but none of the auto-rack conditions apply
+        // (no CTE, no Device Center, and Rackmounted not checked).
+        bool hasComputerStandalone = hasComputer && !computerRackmounted && !hasCTE && !hasDevCenter;
 
         // System type label
         string sysType = string.Join(" ", new[]
@@ -3444,10 +3443,13 @@ public partial class MainWindow : Window
             if (hasIS)  rackSlots.Add(("SR300N", true));
             if (vrsRackmounted) rackSlots.Add(("VRS", true));
             rackSlots.Add(("Monitor", true));
-            // Computer goes into the rack only when explicitly rackmounted
-            // (always in the rack when the Computer component is not separately checked,
-            //  but when the user adds a standalone Computer checkbox, it moves accordingly)
-            if (!hasComputer || computerRackmounted) rackSlots.Add(("Computer", true));
+            // Computer rack placement rules:
+            // - CTE or Device Center checked → Computer auto into rack (regardless of Computer checkbox)
+            // - Computer checked + Rackmounted checkbox checked → into rack
+            // - Computer checked, no CTE/Device Center, not Rackmounted → standalone block
+            // - None of the above → Computer not shown at all
+            bool computerInRack = (hasCTE || hasDevCenter) || computerRackmounted;
+            if (computerInRack) rackSlots.Add(("Computer", true));
 
             // Height logic:
             // - Minimum height is collBodyH (matches collimator height)
