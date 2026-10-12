@@ -133,6 +133,7 @@ public class TemplateData
     public string BBSize { get; set; } = "";
     public string ISAperture { get; set; } = "";
     public string BacklightType { get; set; } = "";
+    public string Cage { get; set; } = "";
     public string MaxWeight { get; set; } = "";
     public string FiniteDistance { get; set; } = "";
     public string Vrs1 { get; set; } = "";
@@ -141,6 +142,7 @@ public class TemplateData
     public string Vrs4 { get; set; } = "";
     public bool VrsRackmounted { get; set; }
     public bool ComputerRackmounted { get; set; }
+    public bool OscilloscopeRackmounted { get; set; }
     public string GimbalSize { get; set; } = "";
     public string GimbalLoadCapacity { get; set; } = "";
     public string GimbalAccuracy { get; set; } = "";
@@ -209,6 +211,7 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _bbSizeComboBox;
     private System.Windows.Controls.ComboBox? _isExitApertureComboBox;
     private System.Windows.Controls.ComboBox? _backlightTypeComboBox;
+    private System.Windows.Controls.ComboBox? _cageComboBox;
     private System.Windows.Controls.TextBox? _maxWeightTextBox;
     private System.Windows.Controls.TextBox? _finiteDistance1TextBox;
     private System.Windows.Controls.TextBox? _finiteDistance2TextBox;
@@ -219,6 +222,7 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _vrsComboBox4;
     private WpfCheckBox? _vrsRackmountedCheckBox;
     private WpfCheckBox? _computerRackmountedCheckBox;
+    private WpfCheckBox? _oscilloscopeRackmountedCheckBox;
     private System.Windows.Controls.TextBox? _gimbalSizeTextBox;
     private System.Windows.Controls.TextBox? _gimbalLoadCapacityTextBox;
     private WpfCheckBox? _gimbalJoystickCheckBox;
@@ -1382,6 +1386,7 @@ public partial class MainWindow : Window
         var savedBBSize         = _bbSizeComboBox?.SelectedItem?.ToString();
         var savedISAperture     = _isExitApertureComboBox?.SelectedItem?.ToString();
         var savedBacklightType  = _backlightTypeComboBox?.SelectedItem?.ToString();
+        var savedCage           = _cageComboBox?.SelectedItem?.ToString();
         var savedMaxWeight      = _maxWeightTextBox?.Text;
         var savedFiniteDist     = _finiteDistance1TextBox?.Text;
         var savedVrs1           = _vrsComboBox1?.SelectedItem?.ToString();
@@ -1390,6 +1395,7 @@ public partial class MainWindow : Window
         var savedVrs4           = _vrsComboBox4?.SelectedItem?.ToString();
         var savedVrsRackmounted      = _vrsRackmountedCheckBox?.IsChecked      ?? false;
         var savedComputerRackmounted = _computerRackmountedCheckBox?.IsChecked ?? false;
+        var savedOscilloscopeRackmounted = _oscilloscopeRackmountedCheckBox?.IsChecked ?? false;
         var savedGimbalSize     = _gimbalSizeTextBox?.Text;
         var savedGimbalLC       = _gimbalLoadCapacityTextBox?.Text;
         var savedGimbalAccuracy = _gimbalAccuracyComboBox?.SelectedItem?.ToString();
@@ -1673,6 +1679,38 @@ public partial class MainWindow : Window
             }
         }
 
+        // Cage row — a plain dropdown (no checkbox); every system has one of the two cages.
+        {
+            radRowIdx++;
+            radiationGrid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+
+            var cageRow = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                Margin = new WpfThickness(0, 6, 0, 14)
+            };
+
+            var cageLbl = MakeComboLabel("Cage:");
+            cageLbl.Margin = new WpfThickness(0, 0, 8, 0);
+            cageLbl.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+            cageRow.Children.Add(cageLbl);
+
+            _cageComboBox = MakeWhiteComboBox(138, "Long-Cage", "Short-Cage");
+            _cageComboBox.SelectedIndex = -1;
+            var cageWrapper = MakeComboWrapper(_cageComboBox, 138);
+            cageWrapper.Margin = new WpfThickness(0);
+            cageWrapper.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+            cageRow.Children.Add(cageWrapper);
+
+            cageRow.Children.Add(MakeNoteButton("Cage"));
+
+            System.Windows.Controls.Grid.SetRow(cageRow, radRowIdx);
+            System.Windows.Controls.Grid.SetColumn(cageRow, 0);
+            System.Windows.Controls.Grid.SetColumnSpan(cageRow, 5);
+            radiationGrid.Children.Add(cageRow);
+        }
+
         optionsContainer.Child = radiationGrid;
         radiationSourcePanel.Children.Add(optionsContainer);
         stackPanel.Children.Add(radiationSourceSection);
@@ -1930,6 +1968,40 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetColumn(losRow, top8Cols[i]);
                 System.Windows.Controls.Grid.SetColumnSpan(losRow, 2);
                 componentsGrid.Children.Add(losRow);
+            }
+            else if (top8[i] == "Oscilloscope")
+            {
+                // "Rackmounted" small checkbox — same style as Computer Rackmounted
+                _oscilloscopeRackmountedCheckBox = new WpfCheckBox
+                {
+                    Content = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "Rackmounted",
+                        FontSize = 11,
+                        FontWeight = System.Windows.FontWeights.Normal,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        Margin = new WpfThickness(2, 0, 0, 0)
+                    },
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(6, 0, 0, 0),
+                    Padding = new WpfThickness(0),
+                    LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8),
+                    IsEnabled = false
+                };
+                var oscRow = new System.Windows.Controls.StackPanel
+                {
+                    Orientation = System.Windows.Controls.Orientation.Horizontal,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(0, 0, 0, 14)
+                };
+                oscRow.Children.Add(cbw);
+                oscRow.Children.Add(_oscilloscopeRackmountedCheckBox);
+                System.Windows.Controls.Grid.SetRow(oscRow, top8Rows[i]);
+                System.Windows.Controls.Grid.SetColumn(oscRow, top8Cols[i]);
+                componentsGrid.Children.Add(oscRow);
+                var oscCb = _configCheckBoxes["Oscilloscope"];
+                oscCb.Checked   += (s, e) => { _oscilloscopeRackmountedCheckBox.IsEnabled = true; };
+                oscCb.Unchecked += (s, e) => { _oscilloscopeRackmountedCheckBox.IsEnabled = false; };
             }
             else if (top8[i] == "Computer")
             {
@@ -2314,6 +2386,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_bbSizeComboBox,         savedBBSize);
         RestoreComboSelection(_isExitApertureComboBox, savedISAperture);
         RestoreComboSelection(_backlightTypeComboBox,  savedBacklightType);
+        RestoreComboSelection(_cageComboBox, savedCage);
         if (_maxWeightTextBox      != null && savedMaxWeight   != null) _maxWeightTextBox.Text      = savedMaxWeight;
         if (_finiteDistance1TextBox != null && savedFiniteDist  != null) _finiteDistance1TextBox.Text = savedFiniteDist;
         RestoreComboSelection(_vrsComboBox1, savedVrs1);
@@ -2322,6 +2395,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_vrsComboBox4, savedVrs4);
         if (_vrsRackmountedCheckBox      != null) _vrsRackmountedCheckBox.IsChecked      = savedVrsRackmounted;
         if (_computerRackmountedCheckBox != null) _computerRackmountedCheckBox.IsChecked = savedComputerRackmounted;
+        if (_oscilloscopeRackmountedCheckBox != null) _oscilloscopeRackmountedCheckBox.IsChecked = savedOscilloscopeRackmounted;
         if (_gimbalSizeTextBox          != null && savedGimbalSize != null)
         if (_gimbalLoadCapacityTextBox  != null && savedGimbalLC   != null) _gimbalLoadCapacityTextBox.Text   = savedGimbalLC;
         RestoreComboSelection(_gimbalAccuracyComboBox, savedGimbalAccuracy);
@@ -2957,6 +3031,9 @@ public partial class MainWindow : Window
         bool comp = _configCheckBoxes.TryGetValue("Computer", out var compCb) && compCb.IsChecked == true;
         if (_computerRackmountedCheckBox != null) _computerRackmountedCheckBox.IsEnabled = comp;
 
+        bool osc = _configCheckBoxes.TryGetValue("Oscilloscope", out var oscCb) && oscCb.IsChecked == true;
+        if (_oscilloscopeRackmountedCheckBox != null) _oscilloscopeRackmountedCheckBox.IsEnabled = osc;
+
         bool gim = _configCheckBoxes.TryGetValue("Gimbal", out var gimCb) && gimCb.IsChecked == true;
         SetInlineEnabled(gim, _lblGimbalSize!, _lblInches!, _lblLoadCapacity!, _lblKGGimbal!, _lblAccuracy!);
         if (_gimbalSizeTextBox         != null) { _gimbalSizeTextBox.IsEnabled         = gim; _gimbalSizeTextBox.Foreground         = gim ? System.Windows.Media.Brushes.Black : _greyBrush; }
@@ -3124,7 +3201,7 @@ public partial class MainWindow : Window
         bool hasCTE          = IsChecked("CTE");
         bool hasDevCenter    = IsChecked("Device Center");
         bool hasXYStage      = IsChecked("XY Stage");
-        bool hasMonitorArm   = _rackmountMonitorArmCheckBox?.IsChecked == true;
+        bool hasMonitorArm   = hasRackmount && _rackmountMonitorArmCheckBox?.IsChecked == true;
         bool hasLOS          = IsChecked("LOS Laser");
         bool hasQTH          = IsChecked("QTH Lamp");
         bool hasNewport      = IsChecked("NewPort Stage");
@@ -3134,15 +3211,22 @@ public partial class MainWindow : Window
         bool hasGimbal       = IsChecked("Gimbal");
         bool hasVRS          = IsChecked("VRS");
         bool hasOscilloscope = IsChecked("Oscilloscope");
+        bool oscilloscopeRackmounted = hasOscilloscope && hasRackmount && _oscilloscopeRackmountedCheckBox?.IsChecked == true;
+        // Oscilloscope is drawn standalone only when it is NOT rackmounted.
+        bool hasOscilloscopeStandalone = hasOscilloscope && !oscilloscopeRackmounted;
         bool vrsRackmounted  = hasVRS && hasRackmount && _vrsRackmountedCheckBox?.IsChecked == true;
         // VRS is drawn standalone only when it is NOT rackmounted.
         bool hasVRSStandalone = hasVRS && !vrsRackmounted;
 
         bool hasComputer          = IsChecked("Computer");
-        bool computerRackmounted  = hasComputer && hasRackmount && _computerRackmountedCheckBox?.IsChecked == true;
-        // Standalone only when Computer is checked but none of the auto-rack conditions apply
-        // (no CTE, no Device Center, and Rackmounted not checked).
-        bool hasComputerStandalone = hasComputer && !computerRackmounted && !hasCTE && !hasDevCenter;
+        // CTE or Device Center imply a PC is present. Computer checkbox also requests a PC.
+        bool pcRequested          = hasComputer || hasCTE || hasDevCenter;
+        // The PC moves into the rackmount only when a Rackmount exists AND either CTE/Device Center
+        // is selected, or the Computer "Rackmounted" checkbox is checked.
+        bool computerInRack       = hasRackmount && (hasCTE || hasDevCenter || (hasComputer && _computerRackmountedCheckBox?.IsChecked == true));
+        bool computerRackmounted  = computerInRack;
+        // Otherwise, whenever a PC is requested it is drawn as a standalone block on the right.
+        bool hasComputerStandalone = pcRequested && !computerInRack;
 
         // System type label
         string sysType = string.Join(" ", new[]
@@ -3367,10 +3451,19 @@ public partial class MainWindow : Window
         double monitorArmExtraW = (hasMonitorArm && hasRackmount) ? 70 : 0; // 58px block + 12px gap
         // When no rackmount, standalone controller blocks sit to the left of the source stage
         double leftExtraW = monitorArmExtraW;
-        if (!hasRackmount && (hasBB || hasIS)) leftExtraW = Math.Max(leftExtraW, 110); // 90px ctrl block + 20px gap
+        if (!hasRackmount && (hasBB || hasIS || hasNewport)) leftExtraW = Math.Max(leftExtraW, 110); // 90px ctrl block + 20px gap
         double diagramW = leftExtraW + srcStageW + narrowW + collBodyW + rightExtraW;
         if (hasRackmount)   diagramW += rackW + rackGap;
-        if (hasPowerMeter || hasEnergyMeter || hasVRSStandalone || hasOscilloscope || hasComputerStandalone) diagramW += meterW + meterGap;
+        int standaloneCount = (hasPowerMeter ? 1 : 0) + (hasEnergyMeter ? 1 : 0) + (hasVRSStandalone ? 1 : 0) + (hasOscilloscopeStandalone ? 1 : 0) + (hasComputerStandalone ? 1 : 0);
+        if (standaloneCount > 0)
+        {
+            int bottomRightCountW = (hasNewport ? 1 : 0) + (hasGimbal ? 1 : 0);
+            double reservedBottomW = bottomRightCountW > 0 ? (bottomRightCountW * 46 + (bottomRightCountW - 1) * 8 + 12) : 0;
+            double usableColH = collBodyH - reservedBottomW;
+            int perColumn = Math.Max(1, (int)((usableColH + 8) / (meterH + 8)));
+            int meterCols = (int)Math.Ceiling(standaloneCount / (double)perColumn);
+            diagramW += meterGap + meterCols * meterW + (meterCols - 1) * 10;
+        }
 
         // Grow the canvas so the full diagram (incl. right-side Gimbal/Newport and
         // meter column) is never clipped. Reserve symmetric 10px side margins.
@@ -3441,15 +3534,14 @@ public partial class MainWindow : Window
             rackSlots.Add(("PDU", true));
             if (hasBB)  rackSlots.Add(("SR800N", true));
             if (hasIS)  rackSlots.Add(("SR300N", true));
+            if (hasNewport) rackSlots.Add(("Newport\nController", true));
             if (vrsRackmounted) rackSlots.Add(("VRS", true));
             rackSlots.Add(("Monitor", true));
-            // Computer rack placement rules:
-            // - CTE or Device Center checked → Computer auto into rack (regardless of Computer checkbox)
+            // Computer rack placement (computerInRack already accounts for Rackmount being present):
+            // - CTE or Device Center checked → Computer auto into rack
             // - Computer checked + Rackmounted checkbox checked → into rack
-            // - Computer checked, no CTE/Device Center, not Rackmounted → standalone block
-            // - None of the above → Computer not shown at all
-            bool computerInRack = (hasCTE || hasDevCenter) || computerRackmounted;
             if (computerInRack) rackSlots.Add(("Computer", true));
+            if (oscilloscopeRackmounted) rackSlots.Add(("Oscilloscope", true));
 
             // Height logic:
             // - Minimum height is collBodyH (matches collimator height)
@@ -3757,6 +3849,16 @@ public partial class MainWindow : Window
             }
         }
 
+        // ── Newport Controller (no Rackmount) — stacks above SR800N/SR300N controllers ──
+        if (hasNewport && !hasRackmount)
+        {
+            double ctrlW = 90, ctrlH = 50;
+            double ctrlX = srcStageX - ctrlW - 20;
+            int ctrlsBelow = (hasBB ? 1 : 0) + (hasIS ? 1 : 0);
+            double ctrlY = collBodyY + collBodyH - ctrlH - ctrlsBelow * 58;
+            MakeBlock("Newport\nController", ctrlX, ctrlY, ctrlW, ctrlH, bold: true, fontSize: 10, textColor: System.Windows.Media.Brushes.Red);
+        }
+
         // ── Backlight, LOS Laser, QTH Lamp — sub-blocks in Source Stage, no controllers ──
         {
             // Count how many slots are already used by B.B and I.S
@@ -3882,30 +3984,27 @@ public partial class MainWindow : Window
 
         // ── POWER METER / ENERGY METER ──────────────────────────────────────
         double curMeterY = meterY;
-        if (hasPowerMeter)
+        // Gimbal / Newport occupy the bottom of this same column (npH=46 each, 8px gap);
+        // reserve that space so the top-down meter stack does not overlap them.
+        int bottomRightCount = (hasGimbal ? 1 : 0) + (hasNewport ? 1 : 0);
+        double reservedBottom = bottomRightCount > 0 ? (bottomRightCount * 46 + (bottomRightCount - 1) * 8 + 12) : 0;
+        double meterColBottom = collBodyY + collBodyH - reservedBottom;
+        double curMeterX = meterX;
+        void DrawStandaloneBlock(string label)
         {
-            MakeBlock("Power\nMeter", meterX, curMeterY, meterW, meterH, fontSize: 9);
+            if (curMeterY + meterH > meterColBottom + 0.5 && curMeterY > meterY)
+            {
+                curMeterX += meterW + 10;
+                curMeterY = meterY;
+            }
+            MakeBlock(label, curMeterX, curMeterY, meterW, meterH, fontSize: 9);
             curMeterY += meterH + 8;
         }
-        if (hasEnergyMeter)
-        {
-            MakeBlock("Energy\nMeter", meterX, curMeterY, meterW, meterH, fontSize: 9);
-            curMeterY += meterH + 8;
-        }
-        if (hasVRSStandalone)
-        {
-            MakeBlock("VRS", meterX, curMeterY, meterW, meterH, fontSize: 9);
-            curMeterY += meterH + 8;
-        }
-        if (hasOscilloscope)
-        {
-            MakeBlock("Oscilloscope", meterX, curMeterY, meterW, meterH, fontSize: 9);
-            curMeterY += meterH + 8;
-        }
-        if (hasComputerStandalone)
-        {
-            MakeBlock("Computer", meterX, curMeterY, meterW, meterH, fontSize: 9);
-        }
+        if (hasPowerMeter)         DrawStandaloneBlock("Power\nMeter");
+        if (hasEnergyMeter)        DrawStandaloneBlock("Energy\nMeter");
+        if (hasVRSStandalone)      DrawStandaloneBlock("VRS");
+        if (hasOscilloscopeStandalone) DrawStandaloneBlock("Oscilloscope");
+        if (hasComputerStandalone) DrawStandaloneBlock("Computer");
 
         panel.Children.Add(card);
     }
@@ -4515,6 +4614,14 @@ public partial class MainWindow : Window
 
         wrapper.Children.Add(checkBox);
 
+        wrapper.Children.Add(MakeNoteButton(itemKey));
+
+        return wrapper;
+    }
+
+    // Creates a standalone speech-bubble note button bound to the given item key.
+    private System.Windows.Controls.Button MakeNoteButton(string itemKey)
+    {
         bool hasNote = _componentNotes.TryGetValue(itemKey, out var existingNote) && !string.IsNullOrWhiteSpace(existingNote);
         var iconFill = hasNote
             ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235))
@@ -4546,9 +4653,7 @@ public partial class MainWindow : Window
         noteBtn.Template = noteBtnTemplate;
 
         noteBtn.Click += NoteButton_Click;
-        wrapper.Children.Add(noteBtn);
-
-        return wrapper;
+        return noteBtn;
     }
 
     private void NoteButton_Click(object sender, RoutedEventArgs e)
@@ -5297,6 +5402,7 @@ public partial class MainWindow : Window
         ReplacePlaceholder("Project Hours",  txtProjectHours.Text);
         ReplacePlaceholder("Selling Price",  txtSellingPrice.Text);
         ReplacePlaceholder("Material Cost",  txtMaterialCost.Text);
+        ReplacePlaceholder("Cage",  _cageComboBox?.SelectedItem?.ToString() ?? "");
         // The Monday # (CRM) placeholder is split across two red runs in the template.
         // Find consecutive red runs whose combined text equals "Monday # (CRM):" and replace them.
         {
@@ -6249,6 +6355,7 @@ public partial class MainWindow : Window
             BBSize             = _bbSizeComboBox?.SelectedItem?.ToString()           ?? p?.BBSize             ?? "",
             ISAperture         = _isExitApertureComboBox?.SelectedItem?.ToString()   ?? p?.ISAperture         ?? "",
             BacklightType      = _backlightTypeComboBox?.SelectedItem?.ToString()    ?? p?.BacklightType      ?? "",
+            Cage               = _cageComboBox?.SelectedItem?.ToString()             ?? p?.Cage               ?? "",
             MaxWeight          = _maxWeightTextBox?.Text                             ?? p?.MaxWeight          ?? "",
             FiniteDistance     = _finiteDistance1TextBox?.Text                       ?? p?.FiniteDistance     ?? "",
             Vrs1               = _vrsComboBox1?.SelectedItem?.ToString()             ?? p?.Vrs1               ?? "",
@@ -6257,6 +6364,7 @@ public partial class MainWindow : Window
             Vrs4               = _vrsComboBox4?.SelectedItem?.ToString()             ?? p?.Vrs4               ?? "",
             VrsRackmounted     = _vrsRackmountedCheckBox?.IsChecked                  ?? p?.VrsRackmounted     ?? false,
             ComputerRackmounted = _computerRackmountedCheckBox?.IsChecked             ?? p?.ComputerRackmounted ?? false,
+            OscilloscopeRackmounted = _oscilloscopeRackmountedCheckBox?.IsChecked     ?? p?.OscilloscopeRackmounted ?? false,
             GimbalSize         = _gimbalSizeTextBox?.Text                            ?? p?.GimbalSize         ?? "",
             GimbalLoadCapacity = _gimbalLoadCapacityTextBox?.Text                    ?? p?.GimbalLoadCapacity ?? "",
             GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString()   ?? p?.GimbalAccuracy     ?? "",
@@ -6459,6 +6567,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_bbSizeComboBox,          d.BBSize);
         RestoreComboSelection(_isExitApertureComboBox,  d.ISAperture);
         RestoreComboSelection(_backlightTypeComboBox,   d.BacklightType);
+        RestoreComboSelection(_cageComboBox,            d.Cage);
         if (_maxWeightTextBox          != null) _maxWeightTextBox.Text          = d.MaxWeight;
         if (_finiteDistance1TextBox    != null) _finiteDistance1TextBox.Text    = d.FiniteDistance;
         RestoreComboSelection(_vrsComboBox1, d.Vrs1);
@@ -6467,6 +6576,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_vrsComboBox4, d.Vrs4);
         if (_vrsRackmountedCheckBox      != null) _vrsRackmountedCheckBox.IsChecked      = d.VrsRackmounted;
         if (_computerRackmountedCheckBox != null) _computerRackmountedCheckBox.IsChecked = d.ComputerRackmounted;
+        if (_oscilloscopeRackmountedCheckBox != null) _oscilloscopeRackmountedCheckBox.IsChecked = d.OscilloscopeRackmounted;
         if (_gimbalSizeTextBox         != null) _gimbalSizeTextBox.Text         = d.GimbalSize;
         if (_gimbalLoadCapacityTextBox != null) _gimbalLoadCapacityTextBox.Text = d.GimbalLoadCapacity;
         RestoreComboSelection(_gimbalAccuracyComboBox, d.GimbalAccuracy);
