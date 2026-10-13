@@ -118,7 +118,13 @@ The generated Word document includes:
 
 ## 📝 Recent Updates
 
-### Version 1.1 (Latest)
+### Version 1.3 (Latest)
+- ✅ Cage value subtitle styling (Arial Bold Italic, #082D51, 10pt)
+- ✅ Action buttons moved under title in single row (Load Template → Send Summary → Export Summary)
+- ✅ Template synced with Cage paragraph
+- ✅ Territory Manager field added
+
+### Version 1.1
 - ✅ Fixed tab switching crashes
 - ✅ Improved data binding stability with QuestionItem class
 - ✅ Added comprehensive error handling
