@@ -5284,6 +5284,69 @@ public partial class MainWindow : Window
             }
         }
 
+        // Replace a placeholder but preserve its existing run formatting (color, bold, size).
+        // Used for the Cage subtitle under Project Type so it keeps the red bold styling set in the template.
+        void ReplacePlaceholderKeepStyle(string placeholder, string value)
+        {
+            foreach (var container in allContainers)
+            {
+                var run = container.Descendants(w + "r")
+                    .FirstOrDefault(r => IsRedRun(r) && RunText(r) == placeholder);
+                if (run != null)
+                {
+                    run.Elements(w + "t").Remove();
+                    var t = new XElement(w + "t", value);
+                    if (value.StartsWith(" ") || value.EndsWith(" "))
+                        t.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+                    run.Add(t);
+                    break;
+                }
+            }
+        }
+
+        // Replace the dedicated red-bold "Cage" paragraph (a centered run under "Project Type")
+        // with the selected cage value, styled as a subtitle: Arial (Body CS), color #082D51, 10pt.
+        void ReplaceCageSubtitle(string value)
+        {
+            foreach (var container in allContainers)
+            {
+                var run = container.Descendants(w + "r")
+                    .FirstOrDefault(r => RunText(r) == "Cage");
+                if (run == null) continue;
+
+                var rPr = run.Element(w + "rPr");
+                if (rPr == null) { rPr = new XElement(w + "rPr"); run.AddFirst(rPr); }
+                // Reset relevant formatting
+                rPr.Elements(w + "b").Remove();
+                rPr.Elements(w + "bCs").Remove();
+                rPr.Elements(w + "i").Remove();
+                rPr.Elements(w + "iCs").Remove();
+                rPr.Elements(w + "color").Remove();
+                rPr.Elements(w + "sz").Remove();
+                rPr.Elements(w + "szCs").Remove();
+                rPr.Elements(w + "rFonts").Remove();
+                // Arial (Body CS), Bold, Italic, color #082D51, 10pt (sz is half-points -> 20)
+                rPr.Add(new XElement(w + "rFonts",
+                    new XAttribute(w + "ascii", "Arial"),
+                    new XAttribute(w + "hAnsi", "Arial"),
+                    new XAttribute(w + "cs", "Arial")));
+                rPr.Add(new XElement(w + "b"));
+                rPr.Add(new XElement(w + "bCs"));
+                rPr.Add(new XElement(w + "i"));
+                rPr.Add(new XElement(w + "iCs"));
+                rPr.Add(new XElement(w + "color", new XAttribute(w + "val", "082D51")));
+                rPr.Add(new XElement(w + "sz",   new XAttribute(w + "val", "20")));
+                rPr.Add(new XElement(w + "szCs", new XAttribute(w + "val", "20")));
+
+                run.Elements(w + "t").Remove();
+                var t = new XElement(w + "t", value);
+                if (value.StartsWith(" ") || value.EndsWith(" "))
+                    t.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+                run.Add(t);
+                break;
+            }
+        }
+
         void ReplaceBoldPlaceholder(string placeholder, string value)
         {
             foreach (var container in allContainers)
@@ -5398,11 +5461,11 @@ public partial class MainWindow : Window
             cmbSystemVariant.SelectedItem?.ToString() ?? "",
             cmbSystemAperture.SelectedItem?.ToString() ?? ""
         }.Where(s => !string.IsNullOrEmpty(s)));
+        ReplaceCageSubtitle(_cageComboBox?.SelectedItem?.ToString() ?? "");
         ReplaceBoldPlaceholder("Project Type",   systemTypeStr);
         ReplacePlaceholder("Project Hours",  txtProjectHours.Text);
         ReplacePlaceholder("Selling Price",  txtSellingPrice.Text);
         ReplacePlaceholder("Material Cost",  txtMaterialCost.Text);
-        ReplacePlaceholder("Cage",  _cageComboBox?.SelectedItem?.ToString() ?? "");
         // The Monday # (CRM) placeholder is split across two red runs in the template.
         // Find consecutive red runs whose combined text equals "Monday # (CRM):" and replace them.
         {

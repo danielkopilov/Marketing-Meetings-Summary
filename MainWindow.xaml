@@ -575,103 +575,89 @@
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
-                </StackPanel>
 
-                <!-- Buttons block:
-                     Left col:  countdown + Load Template
-                     Right col: Export Summary (top) + Send Summary (bottom, same row as Load Template) -->
-                <Grid Grid.Column="2" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="0"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Countdown above Load Template -->
+                    <!-- Action buttons under the title (single row) -->
                     <TextBlock x:Name="txtAutoSaveCountdown"
-                               Grid.Row="0" Grid.Column="0"
                                Text="Automatic save in: 1:00"
                                FontSize="8"
                                FontWeight="Normal"
                                Foreground="#6B7280"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,3"/>
+                               HorizontalAlignment="Left"
+                               Margin="2,10,0,3"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
 
-                    <!-- Export Summary — top right only -->
-                    <Button Content="📄 Export Summary"
-                            Grid.Row="0" Grid.Column="2"
-                            Click="btnGenerateDocument_Click"
-                            HorizontalAlignment="Stretch"
-                            Padding="8,6,8,6"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Cursor="Hand"
-                            Foreground="White"
-                            BorderThickness="0"
-                            Background="#3B82F6">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        CornerRadius="10"
-                                        Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
+                        <!-- Load Template -->
+                        <Button Content="📂 Load Template"
+                                Click="LoadTemplateButton_Click"
+                                Width="175"
+                                Margin="0,0,12,0"
+                                Padding="8,6,8,6"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#16A34A">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="10"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                    <!-- Load Template - same row as Export Summary -->
-                    <Button Content="📂 Load Template"
-                            Grid.Row="0" Grid.Column="0"
-                            Click="LoadTemplateButton_Click"
-                            HorizontalAlignment="Stretch"
-                            Padding="8,6,8,6"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Cursor="Hand"
-                            Foreground="White"
-                            BorderThickness="0"
-                            Background="#16A34A">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        CornerRadius="10"
-                                        Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
+                        <!-- Send Summary -->
+                        <Button Content="✉️ Send Summary"
+                                Click="SendSummaryButton_Click"
+                                Width="175"
+                                Margin="0,0,12,0"
+                                Padding="8,6,8,6"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#7C3AED">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="10"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                    <!-- Send Summary - bottom right, same row as Load Template -->
-                    <Button Content="✉️ Send Summary"
-                            Grid.Row="2" Grid.Column="2"
-                            Click="SendSummaryButton_Click"
-                            HorizontalAlignment="Stretch"
-                            Padding="8,6,8,6"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Cursor="Hand"
-                            Foreground="White"
-                            BorderThickness="0"
-                            Background="#7C3AED">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        CornerRadius="10"
-                                        Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
+                        <!-- Export Summary -->
+                        <Button Content="📄 Export Summary"
+                                Click="btnGenerateDocument_Click"
+                                Width="175"
+                                Margin="0,0,12,0"
+                                Padding="8,6,8,6"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#3B82F6">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="10"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                </Grid>
+                    </StackPanel>
+                </StackPanel>
+
             </Grid>
 
             <!-- Card: Configuration Content with ScrollViewer -->
