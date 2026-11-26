@@ -456,26 +456,29 @@ public class SendSummaryWindow : Window
     private string BuildBody()
     {
         string date        = DateTime.Now.ToString("MMMM dd, yyyy", CultureInfo.InvariantCulture);
+        string deadline    = DateTime.Now.AddDays(14).ToString("MMMM dd, yyyy", CultureInfo.InvariantCulture);
         string order       = string.IsNullOrWhiteSpace(_orderNumber) ? "[Order Number]" : _orderNumber;
         string customer    = string.IsNullOrWhiteSpace(_customerName) ? "[Customer]" : _customerName;
         string projectType = string.IsNullOrWhiteSpace(_projectType) ? "" : $" ({_projectType})";
-        string greeting    = _participants.Count > 0
-            ? $"Dear {_participants[0].Split(' ')[0]},"
-            : "Dear Team,";
+        string greeting    = "Dear Team,";
 
         return
 $@"{greeting}
 
 Please find attached the Marketing Kickoff Meeting Summary for Order {order} – {customer}{projectType}, prepared on {date}.
 
-This document covers the key topics and decisions discussed during our kickoff meeting, including:
+The document summarizes the key topics, technical requirements, and decisions discussed during the meeting, including:
 
-  •  Order overview and project scope
+  •  Project overview and scope
   •  System configuration and selected components
   •  Target specifications
-  •  Questions and Notes
+  •  Open questions, clarifications, and additional notes
 
-Please review the summary and let me know if anything needs to be corrected, clarified, or added before we continue with the next project steps.
+This summary serves as the reference for the next phase of the project, including the initiation of Mechanical and Electrical design activities.
+
+To ensure timely design execution and maintain the overall project schedule, all outstanding issues, required clarifications, and pending decisions must be resolved within two weeks, no later than {deadline}.
+
+Please review the attached document carefully and coordinate with the relevant stakeholders to ensure that all open items are addressed within the specified timeframe.
 
 Best regards.";
     }
@@ -652,11 +655,99 @@ Best regards.";
             ShouldSend = true;
             Close();
         }
+        catch (OperationCanceledException)
+        {
+            // User cancelled when prompted for a missing email address – do nothing.
+        }
         catch (Exception ex)
         {
             MessageBox.Show(
                 $"Could not send via Outlook.\n\nPlease make sure Outlook is installed and configured.\n\nDetails: {ex.Message}",
                 "Outlook Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // Basic email-address validation.
+    private static bool IsValidEmail(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(value.Trim());
+            return addr.Address == value.Trim() && value.Contains('.');
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // Prompts the user to supply an email address for a recipient that could not be
+    // resolved in Outlook (e.g. an external contact). Returns null if cancelled.
+    private static string? PromptForEmail(string displayName)
+    {
+        while (true)
+        {
+            var dialog = new Window
+            {
+                Title                 = "Enter Email Address",
+                Width                 = 420,
+                SizeToContent         = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                ResizeMode            = ResizeMode.NoResize,
+                Background            = new SolidColorBrush(Color.FromRgb(248, 250, 252))
+            };
+
+            var panel = new StackPanel { Margin = new WpfThickness(16) };
+            panel.Children.Add(new TextBlock
+            {
+                Text         = $"\"{displayName}\" is not in your Outlook contacts.\nPlease enter the email address to send to:",
+                TextWrapping = TextWrapping.Wrap,
+                Margin       = new WpfThickness(0, 0, 0, 10)
+            });
+
+            var input = new TextBox { FontSize = 13, Padding = new WpfThickness(6, 4, 6, 4) };
+            panel.Children.Add(input);
+
+            var buttons = new StackPanel
+            {
+                Orientation         = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin              = new WpfThickness(0, 14, 0, 0)
+            };
+
+            string? result = null;
+            var okBtn = new Button
+            {
+                Content = new TextBlock { Text = "OK", Margin = new WpfThickness(0), FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White },
+                Width = 90, Height = 32, Padding = new WpfThickness(0),
+                Margin = new WpfThickness(0, 0, 8, 0), IsDefault = true
+            };
+            var cancelBtn = new Button
+            {
+                Content = new TextBlock { Text = "Cancel", Margin = new WpfThickness(0), FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White },
+                Width = 90, Height = 32, Padding = new WpfThickness(0),
+                IsCancel = true
+            };
+            okBtn.Click     += (_, _) => { result = input.Text.Trim(); dialog.DialogResult = true; };
+            cancelBtn.Click += (_, _) => { dialog.DialogResult = false; };
+            buttons.Children.Add(okBtn);
+            buttons.Children.Add(cancelBtn);
+            panel.Children.Add(buttons);
+
+            dialog.Content = panel;
+            input.Focus();
+
+            bool? dr = dialog.ShowDialog();
+            if (dr != true)
+                return null;
+
+            if (IsValidEmail(result ?? ""))
+                return result;
+
+            MessageBox.Show(
+                $"\"{result}\" is not a valid email address. Please try again.",
+                "Invalid Email", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -703,26 +794,65 @@ Best regards.";
         // olMailItem = 0
         dynamic mail = app.CreateItem(0);
 
-        // olTo = 1
-        foreach (var addr in to.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+        dynamic session = app.Session;
+
+        // Build the final recipient list, resolving names against Outlook and
+        // prompting for an email address when a name cannot be resolved
+        // (e.g. external recipients outside the organization).
+        // Type: olTo = 1, olCC = 2
+        var finalRecipients = new List<(string address, int type)>();
+
+        void ProcessRaw(string raw, int type)
         {
-            string a = addr.Trim();
-            if (!string.IsNullOrEmpty(a))
-                mail.Recipients.Add(a).Type = 1;
+            string a = raw.TrimStart('@').Trim();
+            if (string.IsNullOrEmpty(a)) return;
+
+            // Already a valid email address – use as-is.
+            if (IsValidEmail(a))
+            {
+                finalRecipients.Add((a, type));
+                return;
+            }
+
+            // Try to resolve the display name against Outlook's address book.
+            bool resolved = false;
+            try
+            {
+                dynamic testRecipient = session.CreateRecipient(a);
+                resolved = (bool)testRecipient.Resolve();
+            }
+            catch { resolved = false; }
+
+            if (resolved)
+            {
+                finalRecipients.Add((a, type));
+                return;
+            }
+
+            // Could not resolve – ask the user for this recipient's email address.
+            string? email = PromptForEmail(a);
+            if (string.IsNullOrWhiteSpace(email))
+                throw new OperationCanceledException(
+                    $"Sending cancelled. No email address was provided for \"{a}\".");
+
+            finalRecipients.Add((email!.Trim(), type));
         }
 
-        // olCC = 2
+        foreach (var addr in to.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+            ProcessRaw(addr, 1);
+
         if (!string.IsNullOrWhiteSpace(cc))
         {
             foreach (var addr in cc.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                string a = addr.TrimStart('@').Trim();
-                if (!string.IsNullOrEmpty(a))
-                    mail.Recipients.Add(a).Type = 2;
-            }
+                ProcessRaw(addr, 2);
         }
 
-        mail.Recipients.ResolveAll();
+        foreach (var (address, type) in finalRecipients)
+        {
+            dynamic recipient = mail.Recipients.Add(address);
+            recipient.Type = type;
+            recipient.Resolve();
+        }
 
         mail.Subject  = subject;
         mail.HTMLBody = BuildHtmlBody(body);

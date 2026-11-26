@@ -88,7 +88,7 @@
                                                    FontSize="12"
                                                    FontWeight="Normal"
                                                    Foreground="{TemplateBinding Foreground}"
-                                                   VerticalAlignment="Center"
+                                                   VerticalAlignment="Stretch"
                                                    VerticalContentAlignment="Center"/>
                                 <Button x:Name="PART_Button"
                                         Grid.Column="1"
@@ -149,7 +149,43 @@
             </Setter>
         </Style>
 
-        <!-- Compact rounded ComboBox matching text-field look (used for System Type row) -->
+        <!-- DatePickerTextBox template to keep watermark/value vertically centered and un-clipped -->
+        <Style TargetType="DatePickerTextBox">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePickerTextBox">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentControl x:Name="PART_Watermark"
+                                            Content="Select a date"
+                                            Focusable="False"
+                                            IsHitTestVisible="False"
+                                            VerticalAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            HorizontalAlignment="Left"
+                                            Margin="8,0,2,0"
+                                            Padding="0"
+                                            Foreground="#94A3B8"
+                                            Opacity="0"/>
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          VerticalAlignment="Center"
+                                          Margin="0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="PART_Watermark" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="Text" Value="{x:Null}">
+                                <Setter TargetName="PART_Watermark" Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="CompactRoundedComboBox" TargetType="ComboBox">
             <Setter Property="Background" Value="White"/>
             <Setter Property="Foreground" Value="#1E293B"/>
@@ -522,14 +558,44 @@
                                                                                        FontWeight="Medium"
                                                                                        Foreground="{TemplateBinding Foreground}"
                                                                                        VerticalAlignment="Center"/>
-                                                                       </StackPanel>
-                                                                   </Border>
-                                                               </ControlTemplate>
-                                                           </Button.Template>
-                                                       </Button>
-                                                       </StackPanel>
-                                                   </DockPanel>
-                                               </Border>
+                                                                                               </StackPanel>
+                                                                                           </Border>
+                                                                                       </ControlTemplate>
+                                                                                   </Button.Template>
+                                                                               </Button>
+
+                                                                               <!-- ATP Generator Menu Item -->
+                                                                               <Button x:Name="btnAtpGenerator"
+                                                                                       Click="NavigateToSection"
+                                                                                       Tag="5"
+                                                                                       Background="Transparent"
+                                                                                       Foreground="#64748B"
+                                                                                       BorderThickness="0"
+                                                                                       Padding="10,8"
+                                                                                       Margin="0,0,0,6"
+                                                                                       HorizontalContentAlignment="Left"
+                                                                                       Cursor="Hand">
+                                                                                   <Button.Template>
+                                                                                       <ControlTemplate TargetType="Button">
+                                                                                           <Border Background="{TemplateBinding Background}"
+                                                                                                   CornerRadius="8"
+                                                                                                   Padding="{TemplateBinding Padding}">
+                                                                                               <StackPanel Orientation="Horizontal">
+                                                                                                   <TextBlock Text="&#x2699;" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                                                                   <TextBlock x:Name="btnAtpGeneratorText"
+                                                                                                              Text="ATP Generator"
+                                                                                                              FontSize="14"
+                                                                                                              FontWeight="Medium"
+                                                                                                              Foreground="{TemplateBinding Foreground}"
+                                                                                                              VerticalAlignment="Center"/>
+                                                                                               </StackPanel>
+                                                                                           </Border>
+                                                                                       </ControlTemplate>
+                                                                                   </Button.Template>
+                                                                               </Button>
+                                                                               </StackPanel>
+                                                                           </DockPanel>
+                                                                       </Border>
 
         <!-- Right Content Area - Two Separate Cards -->
         <Grid Grid.Column="1">
@@ -577,13 +643,40 @@
                     </Border>
 
                     <!-- Action buttons under the title (single row) -->
-                    <TextBlock x:Name="txtAutoSaveCountdown"
-                               Text="Automatic save in: 1:00"
-                               FontSize="8"
-                               FontWeight="Normal"
-                               Foreground="#6B7280"
-                               HorizontalAlignment="Left"
-                               Margin="2,10,0,3"/>
+                    <Grid Width="175" HorizontalAlignment="Left" Margin="2,2,0,0">
+                        <TextBlock x:Name="txtAutoSaveCountdown"
+                                   Text="Automatic save in: 1:00"
+                                   FontSize="8"
+                                   FontWeight="Normal"
+                                   Foreground="#6B7280"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"/>
+                        <Button x:Name="btnManualSave"
+                                Content="💾 Save"
+                                Click="ManualSaveButton_Click"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Width="70"
+                                Height="26"
+                                Padding="6,0,6,0"
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Background="#0EA5E9">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="6"
+                                            Padding="{TemplateBinding Padding}"
+                                            TextElement.Foreground="{TemplateBinding Foreground}">
+                                        <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-7,-7,0,0"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
 
                         <!-- Load Template -->
@@ -591,7 +684,7 @@
                                 Click="LoadTemplateButton_Click"
                                 Width="175"
                                 Margin="0,0,12,0"
-                                Padding="8,6,8,6"
+                                Padding="8,2,8,2"
                                 FontSize="10"
                                 FontWeight="SemiBold"
                                 Cursor="Hand"
@@ -614,7 +707,7 @@
                                 Click="SendSummaryButton_Click"
                                 Width="175"
                                 Margin="0,0,12,0"
-                                Padding="8,6,8,6"
+                                Padding="8,2,8,2"
                                 FontSize="10"
                                 FontWeight="SemiBold"
                                 Cursor="Hand"
@@ -637,7 +730,7 @@
                                 Click="btnGenerateDocument_Click"
                                 Width="175"
                                 Margin="0,0,12,0"
-                                Padding="8,6,8,6"
+                                Padding="8,2,8,2"
                                 FontSize="10"
                                 FontWeight="SemiBold"
                                 Cursor="Hand"

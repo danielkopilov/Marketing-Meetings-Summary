@@ -148,6 +148,7 @@ public class TemplateData
     public string GimbalAccuracy { get; set; } = "";
     public bool GimbalJoystick { get; set; }
     public bool LosHalogen { get; set; }
+    public bool IsFiltersWheel { get; set; }
     public bool SourceStageManual { get; set; }
     public bool XyStageManual { get; set; }
     public string FrameGrabber1 { get; set; } = "";
@@ -197,11 +198,16 @@ public partial class MainWindow : Window
         "Gimbal",
         "Frame Grabbers",
         "Optical Table",
-        "Computer"
+        "Computer",
+        "Photodiode"
     };
 
     private readonly Dictionary<string, WpfCheckBox> _configCheckBoxes = new();
     private readonly Dictionary<string, string> _componentNotes = new();
+    private AtpSettings _atpSettings = new();
+    private System.Windows.Controls.TextBox? _atpExeFolderTextBox;
+    private System.Windows.Controls.TextBox? _atpCsvPathTextBox;
+    private System.Windows.Controls.TextBox? _atpSavePathTextBox;
     private System.Windows.Threading.DispatcherTimer? _autoSaveTimer;
     private System.Windows.Threading.DispatcherTimer? _countdownTimer;
     private int _countdownSeconds = 60;
@@ -232,6 +238,7 @@ public partial class MainWindow : Window
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox3;
     private System.Windows.Controls.ComboBox? _frameGrabbersComboBox4;
     private WpfCheckBox? _losHalogenCheckBox;
+    private WpfCheckBox? _isFiltersWheelCheckBox;
     private WpfCheckBox? _sourceStageManualCheckBox;
     private WpfCheckBox? _xyStageManualCheckBox;
     private WpfCheckBox? _rackmountMonitorArmCheckBox;
@@ -313,6 +320,9 @@ public partial class MainWindow : Window
             InitializeMarketingQuestions();
             InitializeNotes();
             StartAutoSaveTimer();
+
+            // Load persisted ATP Generator settings (exe folder + save path).
+            _atpSettings = AtpSettings.Load();
 
             // Load Overview section after window is loaded
             this.Loaded += MainWindow_Loaded;
@@ -434,6 +444,9 @@ public partial class MainWindow : Window
                     break;
                 case 4: // Block Diagram
                     LoadBlockDiagramSection(panel);
+                    break;
+                case 5: // ATP Generator
+                    LoadAtpGeneratorSection(panel);
                     break;
             }
         }
@@ -969,8 +982,8 @@ public partial class MainWindow : Window
             CornerRadius = new CornerRadius(6),
             Background = System.Windows.Media.Brushes.White,
             Padding = new WpfThickness(4, 0, 4, 0),
-            Height = 32,
-            MaxHeight = 32,
+            Height = 44,
+            MaxHeight = 44,
             Width = 220,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Left
         };
@@ -1004,7 +1017,17 @@ public partial class MainWindow : Window
         // Add input box to the panel
         participantsPanel.Children.Add(txtParticipantsInput);
 
-        containerBorder.Child = participantsPanel;
+        // Wrap the panel in a horizontal ScrollViewer so chips can be scrolled
+        // (with scroll arrows) when there are more participants than fit in the box.
+        var participantsScrollViewer = new System.Windows.Controls.ScrollViewer
+        {
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Content = participantsPanel
+        };
+
+        containerBorder.Child = participantsScrollViewer;
         fieldStack.Children.Add(containerBorder);
 
         // Create popup for autocomplete suggestions
@@ -1401,6 +1424,7 @@ public partial class MainWindow : Window
         var savedGimbalAccuracy = _gimbalAccuracyComboBox?.SelectedItem?.ToString();
         var savedGimbalJoystick = _gimbalJoystickCheckBox?.IsChecked ?? false;
         var savedLosHalogen     = _losHalogenCheckBox?.IsChecked ?? false;
+        var savedIsFiltersWheel = _isFiltersWheelCheckBox?.IsChecked ?? false;
         var savedSourceStageManual = _sourceStageManualCheckBox?.IsChecked ?? false;
         var savedXyStageManual     = _xyStageManualCheckBox?.IsChecked ?? false;
         var savedFG1            = _frameGrabbersComboBox?.SelectedItem?.ToString();
@@ -1571,7 +1595,7 @@ public partial class MainWindow : Window
                 radiationGrid.Children.Add(lbl1);
                 _lblBBType = lbl1;
 
-                _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "ET", "LT", "WTR", "HE", "HT", "HT-HA", "CH-STD", "CH-ET", "CH-LT", "CH-WTR", "SR200N-33");
+                _bbTypeComboBox = MakeWhiteComboBox(138, "RR", "STD", "ET", "LT", "WTR", "HE", "HT", "HT-HA", "CH-STD", "CH-ET", "CH-LT", "CH-WTR", "SR200N-33", "SR200N-32");
                 _bbTypeComboBox.SelectedIndex = -1;
                 var w1 = MakeComboWrapper(_bbTypeComboBox, 138);
                 w1.Margin = new WpfThickness(0, 0, 0, 14);
@@ -1593,11 +1617,14 @@ public partial class MainWindow : Window
                 System.Windows.Controls.Grid.SetColumn(w2, 4);
                 radiationGrid.Children.Add(w2);
 
+                // When BB type is HT-HA, restrict Size options to the "A" series only.
+                _bbTypeComboBox.SelectionChanged += (s, e) => UpdateBBSizeOptions();
+
                 // Initially disabled
                 SetInlineEnabled(false, lbl1, lbl2);
                 _bbTypeComboBox.IsEnabled = false; _bbSizeComboBox.IsEnabled = false;
                 var bbCb = _configCheckBoxes["B.B"];
-                bbCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1, lbl2); _bbTypeComboBox.IsEnabled = true; _bbSizeComboBox.IsEnabled = true; };
+                bbCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1, lbl2); _bbTypeComboBox.IsEnabled = true; _bbSizeComboBox.IsEnabled = true; UpdateBBSizeOptions(); };
                 bbCb.Unchecked += (s,e) => { SetInlineEnabled(false, lbl1, lbl2); _bbTypeComboBox.IsEnabled = false; _bbSizeComboBox.IsEnabled = false; };
             }
             else if (item == "I.S")
@@ -1609,18 +1636,39 @@ public partial class MainWindow : Window
                 radiationGrid.Children.Add(lbl1);
                 _lblISAperture = lbl1;
 
-                _isExitApertureComboBox = MakeWhiteComboBox(138, "2\"", "3\"", "4\"", "5\"");
+                _isExitApertureComboBox = MakeWhiteComboBox(138, "1\"", "2\"", "3\"", "4\"", "5\"");
                 var w1 = MakeComboWrapper(_isExitApertureComboBox, 138);
                 w1.Margin = new WpfThickness(0, 0, 0, 14);
                 System.Windows.Controls.Grid.SetRow(w1, radRowIdx);
                 System.Windows.Controls.Grid.SetColumn(w1, 2);
                 radiationGrid.Children.Add(w1);
 
+                // "Filters Wheel" sub-checkbox attached to Integrating Sphere.
+                _isFiltersWheelCheckBox = new WpfCheckBox
+                {
+                    Content = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "Filters Wheel",
+                        FontSize = 11,
+                        FontWeight = System.Windows.FontWeights.Normal,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        Margin = new WpfThickness(2, 0, 0, 0)
+                    },
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new WpfThickness(8, 0, 0, 14),
+                    Padding = new WpfThickness(0),
+                    LayoutTransform = new System.Windows.Media.ScaleTransform(0.8, 0.8),
+                    IsEnabled = false
+                };
+                System.Windows.Controls.Grid.SetRow(_isFiltersWheelCheckBox, radRowIdx);
+                System.Windows.Controls.Grid.SetColumn(_isFiltersWheelCheckBox, 3);
+                System.Windows.Controls.Grid.SetColumnSpan(_isFiltersWheelCheckBox, 2);
+                radiationGrid.Children.Add(_isFiltersWheelCheckBox);
                 SetInlineEnabled(false, lbl1);
                 _isExitApertureComboBox.IsEnabled = false;
                 var isCb = _configCheckBoxes["I.S"];
-                isCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1); _isExitApertureComboBox.IsEnabled = true; };
-                isCb.Unchecked += (s,e) => { SetInlineEnabled(false, lbl1); _isExitApertureComboBox.IsEnabled = false; };
+                isCb.Checked   += (s,e) => { SetInlineEnabled(true,  lbl1); _isExitApertureComboBox.IsEnabled = true; _isFiltersWheelCheckBox.IsEnabled = true; };
+                isCb.Unchecked += (s,e) => { SetInlineEnabled(false, lbl1); _isExitApertureComboBox.IsEnabled = false; _isFiltersWheelCheckBox.IsEnabled = false; };
             }
             else if (item == "Backlight")
             {
@@ -2030,9 +2078,23 @@ public partial class MainWindow : Window
                 };
                 compRow.Children.Add(cbw);
                 compRow.Children.Add(_computerRackmountedCheckBox);
+                compRow.Margin = new WpfThickness(0, 0, 0, 14);
+
                 System.Windows.Controls.Grid.SetRow(compRow, top8Rows[i]);
                 System.Windows.Controls.Grid.SetColumn(compRow, top8Cols[i]);
                 componentsGrid.Children.Add(compRow);
+
+                // Photodiode — its own checkbox + note icon, placed directly under Computer (own grid cell).
+                var cbPhoto = _configCheckBoxes["Photodiode"];
+                DetachCheckBox(cbPhoto);
+                StyleSysCheckBox(cbPhoto);
+                cbPhoto.Margin = new WpfThickness(0, 0, 0, 0);
+                var cbPhotoWrapper = WrapCheckBoxWithNoteButton(cbPhoto, "Photodiode");
+                cbPhotoWrapper.Margin = new WpfThickness(0, 0, 0, 14);
+                System.Windows.Controls.Grid.SetRow(cbPhotoWrapper, 4);
+                System.Windows.Controls.Grid.SetColumn(cbPhotoWrapper, top8Cols[i]);
+                componentsGrid.Children.Add(cbPhotoWrapper);
+
                 var compCb = _configCheckBoxes["Computer"];
                 compCb.Checked   += (s, e) => { _computerRackmountedCheckBox.IsEnabled = true; };
                 compCb.Unchecked += (s, e) => { _computerRackmountedCheckBox.IsEnabled = false; };
@@ -2401,6 +2463,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_gimbalAccuracyComboBox, savedGimbalAccuracy);
         if (_gimbalJoystickCheckBox != null) _gimbalJoystickCheckBox.IsChecked = savedGimbalJoystick;
         if (_losHalogenCheckBox        != null) _losHalogenCheckBox.IsChecked        = savedLosHalogen;
+        if (_isFiltersWheelCheckBox     != null) _isFiltersWheelCheckBox.IsChecked     = savedIsFiltersWheel;
         if (_sourceStageManualCheckBox  != null) _sourceStageManualCheckBox.IsChecked = savedSourceStageManual;
         if (_xyStageManualCheckBox      != null) _xyStageManualCheckBox.IsChecked     = savedXyStageManual;
         RestoreComboSelection(_frameGrabbersComboBox,  savedFG1);
@@ -2995,6 +3058,53 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Restricts the BB "Size" options when the BB type is HT-HA to the "A"
+    /// series only (1A, 4A, 8A, 12A, 35A); otherwise shows the full "D" series.
+    /// </summary>
+    private void UpdateBBSizeOptions()
+    {
+        if (_bbSizeComboBox == null || _bbTypeComboBox == null) return;
+
+        string type = _bbTypeComboBox.SelectedItem?.ToString() ?? "";
+
+        // SR200N-33 / SR200N-32 come in a single 1" size only — lock the Size
+        // dropdown to 1" and disable it (shown in light grey).
+        bool isSR200N = string.Equals(type, "SR200N-33", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(type, "SR200N-32", StringComparison.OrdinalIgnoreCase);
+        if (isSR200N)
+        {
+            _bbSizeComboBox.Items.Clear();
+            _bbSizeComboBox.Items.Add("1\"");
+            _bbSizeComboBox.SelectedIndex = 0;
+            _bbSizeComboBox.IsEnabled = false;
+            if (_lblBBSize != null) _lblBBSize.Foreground = _greyBrush;
+            return;
+        }
+
+        // Re-enable the Size dropdown if BB is checked (it may have been locked
+        // by a previous SR200N selection).
+        bool bbChecked = _configCheckBoxes.TryGetValue("B.B", out var bbCb) && bbCb.IsChecked == true;
+        _bbSizeComboBox.IsEnabled = bbChecked;
+        if (_lblBBSize != null) _lblBBSize.Foreground = bbChecked ? System.Windows.Media.Brushes.Black : _greyBrush;
+
+        string[] desired = string.Equals(type, "HT-HA", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "1A", "4A", "8A", "12A", "35A" }
+            : new[] { "1D", "2D", "4D", "8D", "12D", "14D", "16D", "20D", "35D", "40D" };
+
+        string? previous = _bbSizeComboBox.SelectedItem?.ToString();
+
+        _bbSizeComboBox.Items.Clear();
+        foreach (var s in desired)
+            _bbSizeComboBox.Items.Add(s);
+
+        // Preserve the current selection only if it still exists in the new list.
+        if (previous != null && desired.Contains(previous))
+            _bbSizeComboBox.SelectedItem = previous;
+        else
+            _bbSizeComboBox.SelectedIndex = -1;
+    }
+
+    /// <summary>
     /// After rebuilding the configuration UI, re-apply enabled/foreground state
     /// to all inline controls based on the current checkbox states.
     /// </summary>
@@ -3005,9 +3115,22 @@ public partial class MainWindow : Window
         if (_bbTypeComboBox  != null) _bbTypeComboBox.IsEnabled  = bb;
         if (_bbSizeComboBox  != null) _bbSizeComboBox.IsEnabled  = bb;
 
+        // SR200N-33 / SR200N-32 keep the Size locked to 1" even when BB is checked.
+        if (bb && _bbTypeComboBox != null && _bbSizeComboBox != null)
+        {
+            string bbType = _bbTypeComboBox.SelectedItem?.ToString() ?? "";
+            if (string.Equals(bbType, "SR200N-33", StringComparison.OrdinalIgnoreCase)
+             || string.Equals(bbType, "SR200N-32", StringComparison.OrdinalIgnoreCase))
+            {
+                _bbSizeComboBox.IsEnabled = false;
+                if (_lblBBSize != null) _lblBBSize.Foreground = _greyBrush;
+            }
+        }
+
         bool isS = _configCheckBoxes.TryGetValue("I.S", out var isCb) && isCb.IsChecked == true;
         SetInlineEnabled(isS, _lblISAperture!);
         if (_isExitApertureComboBox != null) _isExitApertureComboBox.IsEnabled = isS;
+        if (_isFiltersWheelCheckBox != null) _isFiltersWheelCheckBox.IsEnabled = isS;
 
         bool bl = _configCheckBoxes.TryGetValue("Backlight", out var blCb) && blCb.IsChecked == true;
         SetInlineEnabled(bl, _lblBacklightType!);
@@ -3199,13 +3322,14 @@ public partial class MainWindow : Window
         bool hasEnergyMeter  = IsChecked("Energy Meter");
         bool hasOptTable     = IsChecked("Optical Table");
         bool hasCTE          = IsChecked("CTE");
-        bool hasDevCenter    = IsChecked("Device Center");
+        _ = IsChecked("Device Center"); // Device Center no longer affects the block diagram PC
         bool hasXYStage      = IsChecked("XY Stage");
         bool hasMonitorArm   = hasRackmount && _rackmountMonitorArmCheckBox?.IsChecked == true;
         bool hasLOS          = IsChecked("LOS Laser");
         bool hasQTH          = IsChecked("QTH Lamp");
         bool hasNewport      = IsChecked("NewPort Stage");
         bool isXYManual      = _xyStageManualCheckBox?.IsChecked == true;
+        bool isSourceManual  = _sourceStageManualCheckBox?.IsChecked == true;
         bool hasLOSTarget    = IsChecked("LOS alignment target");
         bool hasFocus        = IsChecked("Focus Stage");
         bool hasGimbal       = IsChecked("Gimbal");
@@ -3219,11 +3343,12 @@ public partial class MainWindow : Window
         bool hasVRSStandalone = hasVRS && !vrsRackmounted;
 
         bool hasComputer          = IsChecked("Computer");
-        // CTE or Device Center imply a PC is present. Computer checkbox also requests a PC.
-        bool pcRequested          = hasComputer || hasCTE || hasDevCenter;
-        // The PC moves into the rackmount only when a Rackmount exists AND either CTE/Device Center
+        // The Computer appears in the block diagram ONLY when the Computer checkbox is
+        // checked. CTE still implies a PC is present; Device Center does NOT.
+        bool pcRequested          = hasComputer || hasCTE;
+        // The PC moves into the rackmount only when a Rackmount exists AND either CTE
         // is selected, or the Computer "Rackmounted" checkbox is checked.
-        bool computerInRack       = hasRackmount && (hasCTE || hasDevCenter || (hasComputer && _computerRackmountedCheckBox?.IsChecked == true));
+        bool computerInRack       = hasRackmount && (hasCTE || (hasComputer && _computerRackmountedCheckBox?.IsChecked == true));
         bool computerRackmounted  = computerInRack;
         // Otherwise, whenever a PC is requested it is drawn as a standalone block on the right.
         bool hasComputerStandalone = pcRequested && !computerInRack;
@@ -3239,12 +3364,16 @@ public partial class MainWindow : Window
 
         // B.B label
         string bbLabel = "B.B";
+        // BB controller name — SR200N for SR200N-33/-32 types, otherwise SR800N.
+        string bbControllerName = "SR800N";
         if (hasBB)
         {
             var t = _bbTypeComboBox?.SelectedItem?.ToString() ?? "";
             var s2 = _bbSizeComboBox?.SelectedItem?.ToString() ?? "";
             if (!string.IsNullOrEmpty(t) || !string.IsNullOrEmpty(s2))
                 bbLabel = $"B.B {s2} {t}".Trim();
+            if (t.StartsWith("SR200N", StringComparison.OrdinalIgnoreCase))
+                bbControllerName = "SR200N";
         }
         // I.S label
         string isLabel = "I.S";
@@ -3532,7 +3661,7 @@ public partial class MainWindow : Window
             // Build slot list: PDU → controllers → Monitor → Computer (no CTE)
             var rackSlots = new List<(string text, bool isRed)>();
             rackSlots.Add(("PDU", true));
-            if (hasBB)  rackSlots.Add(("SR800N", true));
+            if (hasBB)  rackSlots.Add((bbControllerName, true));
             if (hasIS)  rackSlots.Add(("SR300N", true));
             if (hasNewport) rackSlots.Add(("Newport\nController", true));
             if (vrsRackmounted) rackSlots.Add(("VRS", true));
@@ -3685,9 +3814,10 @@ public partial class MainWindow : Window
             canvas.Children.Add(srcBorder);
 
             // "Motorized Source Stage" label above — red, bold, matching the reference
+            bool isSrcManual = isSourceManual;
             var srcLabel = new System.Windows.Controls.TextBlock
             {
-                Text = "Motorized\nSource Stage",
+                Text = isSrcManual ? "Manual\nSource Stage" : "Motorized\nSource Stage",
                 FontSize = 10, FontWeight = System.Windows.FontWeights.Bold,
                 Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(200, 0, 0)),
                 TextAlignment = System.Windows.TextAlignment.Center,
@@ -3830,7 +3960,7 @@ public partial class MainWindow : Window
                 double ctrlW = 90, ctrlH = 50;
                 double ctrlX = srcStageX - ctrlW - 20;
                 double ctrlY = collBodyY + collBodyH - ctrlH;   // aligned to collimator bottom
-                MakeBlock("SR800N\nController", ctrlX, ctrlY, ctrlW, ctrlH, bold: true, fontSize: 10, textColor: System.Windows.Media.Brushes.Red);
+                MakeBlock($"{bbControllerName}\nController", ctrlX, ctrlY, ctrlW, ctrlH, bold: true, fontSize: 10, textColor: System.Windows.Media.Brushes.Red);
             }
         }
 
@@ -6433,6 +6563,7 @@ public partial class MainWindow : Window
             GimbalAccuracy     = _gimbalAccuracyComboBox?.SelectedItem?.ToString()   ?? p?.GimbalAccuracy     ?? "",
             GimbalJoystick     = _gimbalJoystickCheckBox?.IsChecked                  ?? p?.GimbalJoystick     ?? false,
             LosHalogen         = _losHalogenCheckBox?.IsChecked                      ?? p?.LosHalogen         ?? false,
+            IsFiltersWheel     = _isFiltersWheelCheckBox?.IsChecked                  ?? p?.IsFiltersWheel     ?? false,
             SourceStageManual  = _sourceStageManualCheckBox?.IsChecked               ?? p?.SourceStageManual  ?? false,
             XyStageManual      = _xyStageManualCheckBox?.IsChecked                   ?? p?.XyStageManual      ?? false,
             FrameGrabber1      = _frameGrabbersComboBox?.SelectedItem?.ToString()    ?? p?.FrameGrabber1      ?? "",
@@ -6464,6 +6595,294 @@ public partial class MainWindow : Window
     /// so it can apply the kickoff data to a project.
     /// </summary>
     public TemplateData GetCurrentTemplateData() => CollectTemplateData();
+
+    // ===================== ATP GENERATOR TAB =====================
+
+    private void LoadAtpGeneratorSection(System.Windows.Controls.Panel panel)
+    {
+        var card = new WpfBorder
+        {
+            Background = System.Windows.Media.Brushes.White,
+            CornerRadius = new CornerRadius(12),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(226, 232, 240)),
+            BorderThickness = new WpfThickness(1),
+            Padding = new WpfThickness(24),
+            Margin = new WpfThickness(0, 0, 0, 12)
+        };
+
+        var stack = new System.Windows.Controls.StackPanel { MaxWidth = 720, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+        card.Child = stack;
+
+        stack.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "ATP Generator",
+            FontSize = 20,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59)),
+            Margin = new WpfThickness(0, 0, 0, 6)
+        });
+        stack.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "Launch the ATP Creator application pre-filled from the current configuration.",
+            FontSize = 13,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 116, 139)),
+            Margin = new WpfThickness(0, 0, 0, 20),
+            TextWrapping = System.Windows.TextWrapping.Wrap
+        });
+
+        // 1) ATP Creator executable path
+        _atpExeFolderTextBox = AtpAddPathRow(stack,
+            "ATP Creator executable (.exe):",
+            _atpSettings.ExeFolderPath,
+            "Browse...",
+            isFolder: false,
+            onBrowse: () =>
+            {
+                var dlg = new OpenFileDialog
+                {
+                    Title = "Select the ATP Creator executable",
+                    Filter = "Executable (*.exe)|*.exe|All files (*.*)|*.*"
+                };
+                if (!string.IsNullOrWhiteSpace(_atpSettings.ExeFolderPath) &&
+                    System.IO.File.Exists(_atpSettings.ExeFolderPath))
+                {
+                    dlg.InitialDirectory = System.IO.Path.GetDirectoryName(_atpSettings.ExeFolderPath);
+                }
+                if (dlg.ShowDialog() == true)
+                {
+                    _atpExeFolderTextBox!.Text = dlg.FileName;
+                    _atpSettings.ExeFolderPath = dlg.FileName;
+                    _atpSettings.Save();
+                }
+            });
+
+        // 2) Targets CSV file
+        _atpCsvPathTextBox = AtpAddPathRow(stack,
+            "Targets CSV file:",
+            "",
+            "Upload CSV...",
+            isFolder: false,
+            onBrowse: () =>
+            {
+                var dlg = new OpenFileDialog
+                {
+                    Title = "Select the Targets CSV file",
+                    Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
+                };
+                if (dlg.ShowDialog() == true)
+                    _atpCsvPathTextBox!.Text = dlg.FileName;
+            });
+
+        // 3) Save location
+        string defaultSave = string.IsNullOrWhiteSpace(_atpSettings.SavePath)
+            ? System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Generated ATPs")
+            : _atpSettings.SavePath;
+        _atpSavePathTextBox = AtpAddPathRow(stack,
+            "Save generated ATP to:",
+            defaultSave,
+            "Browse...",
+            isFolder: true,
+            onBrowse: () =>
+            {
+                var dlg = new OpenFolderDialog
+                {
+                    Title = "Select where to save the generated ATP"
+                };
+                if (!string.IsNullOrWhiteSpace(_atpSavePathTextBox!.Text) &&
+                    System.IO.Directory.Exists(_atpSavePathTextBox.Text))
+                {
+                    dlg.InitialDirectory = _atpSavePathTextBox.Text;
+                }
+                if (dlg.ShowDialog() == true)
+                {
+                    _atpSavePathTextBox.Text = dlg.FolderName;
+                    _atpSettings.SavePath = dlg.FolderName;
+                    _atpSettings.Save();
+                }
+            });
+
+        // Launch button
+        var launchBtn = new System.Windows.Controls.Button
+        {
+            Content = "Launch ATP Generator",
+            Height = 44,
+            Width = 240,
+            Margin = new WpfThickness(0, 16, 0, 0),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(16, 185, 129)),
+            Foreground = System.Windows.Media.Brushes.White,
+            FontSize = 15,
+            FontWeight = System.Windows.FontWeights.SemiBold,
+            BorderThickness = new WpfThickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand
+        };
+        launchBtn.Click += LaunchAtpGenerator_Click;
+        stack.Children.Add(launchBtn);
+
+        panel.Children.Add(card);
+    }
+
+    /// <summary>
+    /// Builds a labeled read path row (label, textbox, browse button) and returns
+    /// the created textbox so callers can read/update its value.
+    /// </summary>
+    private System.Windows.Controls.TextBox AtpAddPathRow(
+        System.Windows.Controls.StackPanel parent,
+        string label,
+        string initialValue,
+        string buttonText,
+        bool isFolder,
+        Action onBrowse)
+    {
+        parent.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = label,
+            FontSize = 13,
+            FontWeight = System.Windows.FontWeights.Medium,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)),
+            Margin = new WpfThickness(0, 0, 0, 4)
+        });
+
+        var row = new System.Windows.Controls.Grid { Margin = new WpfThickness(0, 0, 0, 16), HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+
+        var tb = new System.Windows.Controls.TextBox
+        {
+            Text = initialValue,
+            Width = 460,
+            Height = 34,
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center,
+            Padding = new WpfThickness(8, 0, 8, 0),
+            FontSize = 13,
+            TextWrapping = System.Windows.TextWrapping.NoWrap,
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Hidden,
+            BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(203, 213, 225)),
+            BorderThickness = new WpfThickness(1)
+        };
+        System.Windows.Controls.Grid.SetColumn(tb, 0);
+        row.Children.Add(tb);
+
+        var btn = new System.Windows.Controls.Button
+        {
+            Content = buttonText,
+            Height = 34,
+            Width = 120,
+            Margin = new WpfThickness(8, 0, 0, 0),
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(59, 130, 246)),
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new WpfThickness(0),
+            FontWeight = System.Windows.FontWeights.Medium,
+            Cursor = System.Windows.Input.Cursors.Hand
+        };
+        btn.Click += (s, e) => onBrowse();
+        System.Windows.Controls.Grid.SetColumn(btn, 1);
+        row.Children.Add(btn);
+
+        parent.Children.Add(row);
+        return tb;
+    }
+
+    private void LaunchAtpGenerator_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string exePath = _atpExeFolderTextBox?.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(exePath) || !System.IO.File.Exists(exePath))
+            {
+                MessageBox.Show("Please select a valid ATP Creator executable (.exe) first.",
+                    "ATP Generator", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Persist exe + save paths before launching.
+            _atpSettings.ExeFolderPath = exePath;
+            _atpSettings.SavePath = _atpSavePathTextBox?.Text?.Trim() ?? _atpSettings.SavePath;
+            _atpSettings.Save();
+
+            var fill = BuildAtpFillData();
+
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            try
+            {
+                AtpCreatorAutomation.LaunchAndFill(exePath, fill);
+            }
+            finally
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.Input.Mouse.OverrideCursor = null;
+            MessageBox.Show($"Failed to launch and fill the ATP Creator:\n\n{ex.Message}",
+                "ATP Generator", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Maps the current Marketing Kickoff configuration onto the ATP Creator fields.
+    /// </summary>
+    private AtpCreatorAutomation.AtpFillData BuildAtpFillData()
+    {
+        var d = CollectTemplateData();
+        string orderFull = d.OrderNumber ?? "";
+        // ATP Creator "Order#" takes only the last 5 characters of the order number.
+        string orderLast5 = orderFull.Length > 5 ? orderFull.Substring(orderFull.Length - 5) : orderFull;
+        var fill = new AtpCreatorAutomation.AtpFillData
+        {
+            PMName = d.ProjectManager,
+            SystemSN = orderFull,
+            OrderNumber = orderLast5,
+            SystemType = d.SystemType,
+            Variant = d.SystemVariant,
+            Aperture = d.SystemAperture,
+            BBType = d.BBType,
+            BBSize = d.BBSize,
+            ISExitAperture = d.ISAperture,
+            BacklightType = d.BacklightType,
+            Vrs1 = d.Vrs1,
+            Vrs2 = d.Vrs2,
+            Vrs3 = d.Vrs3,
+            GimbalSize = d.GimbalSize,
+            NewPortStageMaxWeight = d.MaxWeight,
+            FocusStageFiniteDistance = d.FiniteDistance,
+            CsvPath = _atpCsvPathTextBox?.Text?.Trim() ?? "",
+            SavePath = _atpSavePathTextBox?.Text?.Trim() ?? ""
+        };
+
+        bool Checked(string key) => d.ConfigCheckBoxes.TryGetValue(key, out var v) && v;
+
+        // Radiation sources (keys MUST match the ATP Creator UIA control Names)
+        fill.Checkboxes["B.B"] = Checked("B.B");
+        fill.Checkboxes["I.S"] = Checked("I.S");
+        fill.Checkboxes["Backlight"] = Checked("Backlight");
+        fill.Checkboxes["LOS Laser"] = Checked("LOS Laser");
+        fill.Checkboxes["QTH Lamp"] = Checked("QTH Lamp");
+
+        // System components
+        fill.Checkboxes["Source Stage"] = Checked("Source Stage");
+        fill.Checkboxes["Rackmount"] = Checked("Rackmount");
+        fill.Checkboxes["Manual Choke"] = Checked("Manual Choke");
+        fill.Checkboxes["CTE"] = Checked("CTE");
+        fill.Checkboxes["Device Center"] = Checked("Device Center");
+        fill.Checkboxes["LOS alignment target"] = Checked("LOS alignment target");
+        fill.Checkboxes["XY Stage"] = Checked("XY Stage");
+        fill.Checkboxes["Power Meter"] = Checked("Power Meter");
+        fill.Checkboxes["Energy Meter"] = Checked("Energy Meter");
+        fill.Checkboxes["NewPort Stage"] = Checked("NewPort Stage");
+        fill.Checkboxes["Focus Stage"] = Checked("Focus Stage");
+        fill.Checkboxes["VRS"] = Checked("VRS");
+        fill.Checkboxes["Gimbal"] = Checked("Gimbal");
+
+        // Joystick sub-options from the config controls.
+        fill.Checkboxes["GimbalJoystick"] = d.GimbalJoystick;
+
+        return fill;
+    }
+
 
     private void SaveTemplate()
     {
@@ -6525,6 +6944,22 @@ public partial class MainWindow : Window
         int mins = _countdownSeconds / 60;
         int secs = _countdownSeconds % 60;
         txtAutoSaveCountdown.Text = $"Automatic save in: {mins}:{secs:D2}";
+    }
+
+    /// <summary>
+    /// Manual "Save" button — saves the template immediately and restarts the
+    /// automatic-save countdown from 60 seconds.
+    /// </summary>
+    private void ManualSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        SaveTemplate();
+
+        // Reset the automatic-save interval so it starts counting from 60s again.
+        _autoSaveTimer?.Stop();
+        _autoSaveTimer?.Start();
+
+        _countdownSeconds = 60;
+        UpdateCountdownLabel();
     }
 
     private TemplateData? _pendingTemplateConfig;
@@ -6645,6 +7080,7 @@ public partial class MainWindow : Window
         RestoreComboSelection(_gimbalAccuracyComboBox, d.GimbalAccuracy);
         if (_gimbalJoystickCheckBox    != null) _gimbalJoystickCheckBox.IsChecked = d.GimbalJoystick;
         if (_losHalogenCheckBox        != null) _losHalogenCheckBox.IsChecked        = d.LosHalogen;
+        if (_isFiltersWheelCheckBox     != null) _isFiltersWheelCheckBox.IsChecked     = d.IsFiltersWheel;
         if (_sourceStageManualCheckBox  != null) _sourceStageManualCheckBox.IsChecked = d.SourceStageManual;
         if (_xyStageManualCheckBox      != null) _xyStageManualCheckBox.IsChecked     = d.XyStageManual;
         RestoreComboSelection(_frameGrabbersComboBox,  d.FrameGrabber1);
